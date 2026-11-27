@@ -18,7 +18,7 @@
 | 模块 | 核心主题 | 状态 |
 | :--- | :--- | :--- |
 | `common` | 共享领域模型、默认初级 Java `Knowledge Source` 与离线测试替身 | 已完成（Milestone 1 / Ticket 2，`Knowledge Source` 加载见下文） |
-| `stage-01-chat-and-structured-output` | `ChatClient` 同步 / SSE 流式讲解与强类型 `Exercise` 结构化输出 | 进行中（Milestone 1：同步与 SSE 流式讲解、`Exercise` 结构化生成接口已完成） |
+| `stage-01-chat-and-structured-output` | `ChatClient` 同步 / SSE 流式讲解与强类型 `Exercise` 结构化输出 | 进行中（Milestone 1：同步与 SSE 流式讲解、`Exercise` 结构化生成接口、`live-llm` 真实模型端到端测试与[学习导读](./stage-01-chat-and-structured-output/README.md)已完成） |
 | `stage-02-tools-and-advisors` | `@Tool`、`ToolCallingAdvisor`、手动循环对比、自定义 `BaseAdvisor` 与 `requiresConfirmation` 人工确认 | 待开启 |
 | `stage-03-session-and-rag` | Spring AI 2.1 `Session API`、ETL Pipeline、模块化 RAG 与 `PostgreSQL + pgvector`（Docker Compose） | 待开启 |
 | `stage-04-mcp` | 自建 Java MCP Server（`@McpTool` / Streamable HTTP）与 MCP Client 集成 | 待开启 |
@@ -96,6 +96,22 @@ curl -N -X POST http://localhost:8080/api/explanations/stream \
   - `springdoc.api-docs.enabled=false`
   - `springdoc.swagger-ui.enabled=false`
 - **使用说明与限制**：Swagger UI 适合浏览字段定义与直接调试普通 JSON 接口（如 `/api/explanations`、`/api/exercises`）；调试 `POST /api/explanations/stream` 的逐段 SSE 推送效果时，仍建议使用内置页面 `http://localhost:8080/` 或 `curl -N`。
+
+## 真实模型端到端测试与学习导读（`stage-01`）
+
+- **学习导读**：[stage-01 学习导读](./stage-01-chat-and-structured-output/README.md) 解释 `ChatClient`、System/User Prompt、SSE 流式输出与 Structured Output 的核心概念，并提供同步讲解、SSE 流式讲解、`Exercise` 生成与非法入参 400 四类 curl 示例。
+- **`live-llm` 测试**：`LiveLlmEndToEndTest` 不注入 `FakeChatModel`，通过 HTTP 入口直连 `OPENAI_*` 环境变量（或根目录 `.env`）配置的真实端点，覆盖同步讲解、SSE 流式讲解、`Exercise` 生成与 400 入参四个用例。默认 `mvn test` 自动排除该 Tag，无需 API Key，也不产生网络请求与费用。
+- **显式运行**（会消耗 Token，约 1 分钟）：
+
+```bash
+set -a && source .env && set +a
+mvn -B -ntp -pl stage-01-chat-and-structured-output -am test \
+  -Dsurefire.excludedGroups= -Dgroups=live-llm \
+  -Dtest=LiveLlmEndToEndTest -Dsurefire.failIfNoSpecifiedTests=false
+```
+
+- **失败时的行为**：未设置 `OPENAI_API_KEY` 时，OpenAI 自动装配要求必须有 API Key，Spring 上下文会在启动阶段失败，四个用例都不会执行；API Key 无效、端点不可达或模型报错时，接口返回 HTTP 502（`MODEL_CALL_FAILED`），对应用例失败。这属于预期，说明环境未就绪。
+- **当前限制**：`stage-01` 暂不提供本地 `ollama` 方式，导读只覆盖云端 OpenAI-compatible 端点。
 
 ## Knowledge Source 加载（`common`）
 
