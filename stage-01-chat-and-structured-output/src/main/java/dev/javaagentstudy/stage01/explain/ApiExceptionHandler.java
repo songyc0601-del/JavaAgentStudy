@@ -2,6 +2,8 @@ package dev.javaagentstudy.stage01.explain;
 
 import java.util.List;
 
+import dev.javaagentstudy.stage01.exercise.ExerciseFormatException;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
@@ -59,6 +61,16 @@ public class ApiExceptionHandler {
         log.error("异常分支[下游模型调用失败]：条件=捕获ModelCallException，返回502", ex);
         ApiError body = new ApiError("MODEL_CALL_FAILED",
                 "The language model is currently unavailable, please try again later", List.of());
+        return ResponseEntity.status(HttpStatus.BAD_GATEWAY).body(body);
+    }
+
+    /** 模型输出经校验重试后仍不是合法 Exercise：同样属于上游问题，返回 502，但用独立错误码区分。 */
+    @ExceptionHandler(ExerciseFormatException.class)
+    public ResponseEntity<ApiError> handleExerciseFormat(ExerciseFormatException ex) {
+        // 不附带异常对象：其 cause 的 message 可能含模型输出片段；详细类型已在 Service 层记录。
+        log.error("异常分支[Exercise格式不合法]：条件=捕获ExerciseFormatException，返回502");
+        ApiError body = new ApiError("EXERCISE_GENERATION_FAILED",
+                "The model did not return a valid exercise, please try again later", List.of());
         return ResponseEntity.status(HttpStatus.BAD_GATEWAY).body(body);
     }
 }

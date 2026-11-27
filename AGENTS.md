@@ -37,5 +37,6 @@ An issue is done only when every item below is accounted for. Report each one in
 2. `GLOSSARY.md` and `docs/adr/` reflect any new term or decision; a term the glossary already defines stays unchanged.
 3. A summary comment for the issue is drafted: what was built, verification (`mvn -B -ntp test` result), acceptance criteria that were not met, and follow-ups. Show the draft to the user and post it with `gh issue comment` only after approval; tick the acceptance-criteria checkboxes in the same step.
 4. Code comments explain the why of each non-obvious step (fallbacks, boundary conditions, workarounds) in Simplified Chinese.
+5. Once the summary comment is approved, do these three steps together: post the comment (and tick the checkboxes), close the issue with `gh issue close <number>`, and commit and push the code to the current branch. Closing matters because open issues block the downstream issues that depend on them. Before committing, check `git status` and the full diff, and run `mvn -B -ntp test`; never commit secrets.
 
-Leave `git commit` and `git push` to the user unless asked.
+Outside the approved wrap-up in item 5, leave `git commit` and `git push` to the user unless asked.

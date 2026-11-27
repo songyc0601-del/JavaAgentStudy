@@ -40,6 +40,10 @@ _Avoid_: Chat, Conversation, Thread
 围绕特定 Topic 生成的单个练习任务，用于检验 Learner 的理解程度。
 _Avoid_: Problem, Question, Quiz
 
+**Difficulty**:
+Exercise 的难度级别，分为初级、中级、高级三档；未指定时默认初级。
+_Avoid_: Level, Grade, Hardness
+
 **Attempt**:
 Learner 针对某道 Exercise 提交的一次具体作答（文字解释或代码片段）；同一道 Exercise 可有多次 Attempt。
 _Avoid_: Answer, Submission, Try

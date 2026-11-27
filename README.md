@@ -18,7 +18,7 @@
 | 模块 | 核心主题 | 状态 |
 | :--- | :--- | :--- |
 | `common` | 共享领域模型、默认初级 Java `Knowledge Source` 与离线测试替身 | 已完成（Milestone 1 / Ticket 2，`Knowledge Source` 加载见下文） |
-| `stage-01-chat-and-structured-output` | `ChatClient` 同步 / SSE 流式讲解与强类型 `Exercise` 结构化输出 | 进行中（Milestone 1：同步与 SSE 流式讲解已完成，`Exercise` 结构化输出待开发） |
+| `stage-01-chat-and-structured-output` | `ChatClient` 同步 / SSE 流式讲解与强类型 `Exercise` 结构化输出 | 进行中（Milestone 1：同步与 SSE 流式讲解、`Exercise` 结构化生成接口已完成） |
 | `stage-02-tools-and-advisors` | `@Tool`、`ToolCallingAdvisor`、手动循环对比、自定义 `BaseAdvisor` 与 `requiresConfirmation` 人工确认 | 待开启 |
 | `stage-03-session-and-rag` | Spring AI 2.1 `Session API`、ETL Pipeline、模块化 RAG 与 `PostgreSQL + pgvector`（Docker Compose） | 待开启 |
 | `stage-04-mcp` | 自建 Java MCP Server（`@McpTool` / Streamable HTTP）与 MCP Client 集成 | 待开启 |
@@ -64,6 +64,19 @@ curl -N -X POST http://localhost:8080/api/explanations/stream \
 - **调试日志**：`stage-01` 在 `application.yml` 中默认将 `dev.javaagentstudy.stage01` 设为 `DEBUG`（可通过环境变量 `STAGE01_LOG_LEVEL` 覆盖），以简体中文记录接口入口、提示词分支、400/502 异常分支、SSE 分片序号与字符数，以及流式完成/取消/失败状态；提示词正文与模型输出正文不会写入日志。
 - **当前限制**：流中途出错时尚未向客户端推送专门的错误事件，客户端只能感知到连接异常结束。
 - **离线测试**：`common` 的 `FakeChatModel` 提供 `streamingChunks(...)`（按序回放预设分片）和 `streamingChunksThenFailing(...)`（回放分片后以预设异常终止），流式接口测试无需网络与 API Key。
+
+## 结构化 Exercise 生成（`stage-01`）
+
+`POST /api/exercises` 让 `Study Agent` 围绕指定 `Topic` 生成一道强类型 `Exercise`，而不是松散文本。
+
+- **请求**：JSON 请求体，必填 `topic`，可选 `difficulty`（`BEGINNER` / `INTERMEDIATE` / `ADVANCED`，缺省为 `BEGINNER`）与 `focus`。
+- **响应**：HTTP 200，JSON 包含 `title`、`topic.name`、`difficulty`、`description`、`hints`、`referenceAnswerPoints`。
+- **实现**：通过 `StructuredOutputValidationAdvisor` 按 `Exercise` 的 JSON Schema 校验模型输出，不合法时携带错误信息让模型重试（最多重试 2 次），再用 `BeanOutputConverter` 绑定为 `Exercise`。
+- **失败时的行为**：
+  - `topic` 空白或缺失、`difficulty` 取值非法、请求体不是合法 JSON：返回 HTTP 400（`VALIDATION_FAILED` 或 `MALFORMED_REQUEST`），不会调用模型。
+  - 重试用尽后输出仍无法解析：返回 HTTP 502，`error` 为 `EXERCISE_GENERATION_FAILED`。
+  - 模型调用抛异常：返回 HTTP 502，`error` 为 `MODEL_CALL_FAILED`；响应中不含上游异常原文。
+- **`focus`**：非空白时会追加到提示词，让题目围绕该关注重点；为空或缺失时只按 `topic` 与难度出题。
 
 ## Knowledge Source 加载（`common`）
 
