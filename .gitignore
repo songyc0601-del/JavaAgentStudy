@@ -1,0 +1,41 @@
+# macOS
+.DS_Store
+._*
+
+# IDEs & Editors
+.idea/
+*.iml
+*.iws
+*.ipr
+.vscode/
+.classpath
+.project
+.settings/
+*.swp
+*.swo
+*~
+
+# Java
+*.class
+*.jar
+*.war
+*.ear
+*.nar
+*.log
+hs_err_pid*
+replay_pid*
+*.hprof
+
+# Maven & Gradle
+target/
+build/
+out/
+.gradle/
+!gradle/wrapper/gradle-wrapper.jar
+!.mvn/wrapper/maven-wrapper.jar
+
+# Local secrets & AI tool local settings
+.env
+.env.*
+CLAUDE.local.md
+.claude/settings.local.json
