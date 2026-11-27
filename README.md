@@ -39,7 +39,10 @@ set -a && source .env && set +a
 # 3. 启动 stage-01（默认使用 OpenAI-compatible 云端端点）
 mvn -pl stage-01-chat-and-structured-output -am spring-boot:run
 
-# 启动后可在浏览器访问 http://localhost:8080/ 打开概念讲解验证页面，
+# 启动后可在浏览器访问：
+# - http://localhost:8080/                 打开概念讲解验证页面
+# - http://localhost:8080/swagger-ui.html  打开 Swagger UI 在线查看与调试接口
+# - http://localhost:8080/v3/api-docs      查看 OpenAPI 3 JSON 文档
 # 或直接通过 curl 调用同步概念讲解接口：
 curl -X POST http://localhost:8080/api/explanations \
   -H 'Content-Type: application/json' \
@@ -77,6 +80,22 @@ curl -N -X POST http://localhost:8080/api/explanations/stream \
   - 重试用尽后输出仍无法解析：返回 HTTP 502，`error` 为 `EXERCISE_GENERATION_FAILED`。
   - 模型调用抛异常：返回 HTTP 502，`error` 为 `MODEL_CALL_FAILED`；响应中不含上游异常原文。
 - **`focus`**：非空白时会追加到提示词，让题目围绕该关注重点；为空或缺失时只按 `topic` 与难度出题。
+
+## OpenAPI / Swagger UI 接口文档（`stage-01`）
+
+`stage-01` 集成了 `springdoc-openapi-starter-webmvc-ui`（3.2.1，适配 Spring Boot 4.2.x；版本由父工程 `pom.xml` 统一管理，供后续阶段模块按需引入），自动扫描 REST 接口与数据结构并暴露交互式接口文档。
+
+- **访问地址**（启动 `stage-01` 后）：
+  - **Swagger UI**：`http://localhost:8080/swagger-ui.html`（自动重定向到 `/swagger-ui/index.html`）
+  - **OpenAPI 3 JSON**：`http://localhost:8080/v3/api-docs`
+- **已覆盖接口**：
+  - `POST /api/explanations`（同步生成概念讲解，含 200 / 400 / 502 响应与 Schema 示例）
+  - `POST /api/explanations/stream`（SSE 流式生成概念讲解）
+  - `POST /api/exercises`（生成结构化 `Exercise`，含 200 / 400 / 502 响应与 Schema 示例）
+- **配置与开关**：本地默认启用；如部署到不希望暴露接口文档的环境，可通过配置关闭：
+  - `springdoc.api-docs.enabled=false`
+  - `springdoc.swagger-ui.enabled=false`
+- **使用说明与限制**：Swagger UI 适合浏览字段定义与直接调试普通 JSON 接口（如 `/api/explanations`、`/api/exercises`）；调试 `POST /api/explanations/stream` 的逐段 SSE 推送效果时，仍建议使用内置页面 `http://localhost:8080/` 或 `curl -N`。
 
 ## Knowledge Source 加载（`common`）
 

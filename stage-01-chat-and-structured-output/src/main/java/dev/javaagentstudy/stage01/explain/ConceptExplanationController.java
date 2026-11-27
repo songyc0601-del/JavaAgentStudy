@@ -1,5 +1,11 @@
 package dev.javaagentstudy.stage01.explain;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 
 import org.slf4j.Logger;
@@ -20,6 +26,7 @@ import reactor.core.publisher.Flux;
  */
 // 仅放行本机回环端口跨源，方便直接用 IntelliJ 内置静态预览（如 localhost:63342）打开调试页联调。
 @CrossOrigin(originPatterns = {"http://localhost:*", "http://127.0.0.1:*"})
+@Tag(name = "Concept Explanation", description = "面向初级 Java Learner 的概念讲解接口（同步与 SSE 流式）")
 @RestController
 @RequestMapping("/api/explanations")
 public class ConceptExplanationController {
@@ -33,6 +40,19 @@ public class ConceptExplanationController {
     }
 
     // @Valid 会在进入方法前校验请求体；校验失败时直接抛异常，Service 和模型都不会被调用。
+    @Operation(summary = "同步生成概念讲解",
+            description = "围绕指定 Topic（可选附带 focus 关注重点）生成完整概念讲解文本。")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "讲解生成成功",
+                    content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = ExplanationResponse.class))),
+            @ApiResponse(responseCode = "400", description = "参数校验失败或请求体 JSON 非法",
+                    content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = ApiError.class))),
+            @ApiResponse(responseCode = "502", description = "下游模型调用失败",
+                    content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = ApiError.class)))
+    })
     @PostMapping
     public ExplanationResponse explain(@Valid @RequestBody ExplanationRequest request) {
         long startNanos = System.nanoTime();
@@ -55,6 +75,16 @@ public class ConceptExplanationController {
 
     // SSE 流式讲解：produces 指定 text/event-stream，Flux<String> 的每个元素会作为一个 data 事件推送。
     // 入参校验与同步接口一致：校验失败时在进入方法前抛异常，不会触发模型流式调用。
+    @Operation(summary = "SSE 流式生成概念讲解",
+            description = "以 text/event-stream 逐段推送概念讲解文本；入参校验失败仍返回 JSON 错误体。")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "SSE 事件流建立成功，按序推送讲解分片",
+                    content = @Content(mediaType = MediaType.TEXT_EVENT_STREAM_VALUE,
+                            schema = @Schema(type = "string"))),
+            @ApiResponse(responseCode = "400", description = "参数校验失败或请求体 JSON 非法",
+                    content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = ApiError.class)))
+    })
     @PostMapping(value = "/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public Flux<String> explainStream(@Valid @RequestBody ExplanationRequest request) {
         log.info("接口入口[流式讲解] POST /api/explanations/stream：mode=stream, topicLength={}, hasFocus={}",

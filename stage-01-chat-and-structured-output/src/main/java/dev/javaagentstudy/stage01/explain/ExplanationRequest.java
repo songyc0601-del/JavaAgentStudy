@@ -1,5 +1,6 @@
 package dev.javaagentstudy.stage01.explain;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
 
 /**
@@ -11,5 +12,12 @@ import jakarta.validation.constraints.NotBlank;
  *              @NotBlank 同时拒绝 null、空字符串和只有空格的字符串
  * @param focus 可选的关注重点，不需要时可以为 null
  */
-public record ExplanationRequest(@NotBlank(message = "topic must not be blank") String topic, String focus) {
+@Schema(description = "概念讲解请求")
+public record ExplanationRequest(
+        @Schema(description = "要讲解的 Java Topic，不能为空白", example = "集合框架",
+                requiredMode = Schema.RequiredMode.REQUIRED)
+        @NotBlank(message = "topic must not be blank")
+        String topic,
+        @Schema(description = "可选的关注重点", example = "ArrayList 与 LinkedList 的区别", nullable = true)
+        String focus) {
 }

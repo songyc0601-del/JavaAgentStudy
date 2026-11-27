@@ -30,6 +30,8 @@
         <surefire.excludedGroups>live-llm</surefire.excludedGroups>
         <java.version>21</java.version>
         <spring-ai.version>2.1.0</spring-ai.version>
+        <!-- Spring Boot 4.x 对应 springdoc-openapi 3.x 分支。 -->
+        <springdoc-openapi.version>3.2.1</springdoc-openapi.version>
     </properties>
 
     <!-- 只声明版本，不会真的引入依赖；子模块需要时再按需引用。 -->
@@ -48,6 +50,12 @@
                 <groupId>dev.javaagentstudy</groupId>
                 <artifactId>common</artifactId>
                 <version>${project.version}</version>
+            </dependency>
+            <!-- OpenAPI 3 / Swagger UI（WebMVC Starter），供有 HTTP 接口的阶段模块按需引入。 -->
+            <dependency>
+                <groupId>org.springdoc</groupId>
+                <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
+                <version>${springdoc-openapi.version}</version>
             </dependency>
         </dependencies>
     </dependencyManagement>
