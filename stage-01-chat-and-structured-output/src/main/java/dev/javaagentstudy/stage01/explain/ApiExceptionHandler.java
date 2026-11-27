@@ -30,6 +30,7 @@ public class ApiExceptionHandler {
         List<String> details = ex.getBindingResult().getFieldErrors().stream()
                 .map(fieldError -> fieldError.getField() + ": " + fieldError.getDefaultMessage())
                 .toList();
+        log.warn("异常分支[参数校验失败]：条件=触发MethodArgumentNotValidException，details={}", details, ex);
         ApiError body = new ApiError("VALIDATION_FAILED", "Request validation failed", details);
         // 显式指定 JSON：SSE 客户端会带 Accept: text/event-stream，
         // 不指定时 ApiError 无法按该类型序列化，会返回空响应体。
@@ -39,6 +40,7 @@ public class ApiExceptionHandler {
     /** 请求体为空或不是合法 JSON：这是调用方的错误，返回 400，不会调用模型。 */
     @ExceptionHandler(HttpMessageNotReadableException.class)
     public ResponseEntity<ApiError> handleMalformedRequest(HttpMessageNotReadableException ex) {
+        log.warn("异常分支[请求体格式错误]：条件=触发HttpMessageNotReadableException，返回400", ex);
         ApiError body = new ApiError("MALFORMED_REQUEST",
                 "Request body is missing or is not valid JSON", List.of());
         // 同上：流式端点的客户端带 Accept: text/event-stream，这里同样固定为 JSON，避免空响应体。
@@ -54,7 +56,7 @@ public class ApiExceptionHandler {
      */
     @ExceptionHandler(ModelCallException.class)
     public ResponseEntity<ApiError> handleModelFailure(ModelCallException ex) {
-        log.error("Language model call failed", ex);
+        log.error("异常分支[下游模型调用失败]：条件=捕获ModelCallException，返回502", ex);
         ApiError body = new ApiError("MODEL_CALL_FAILED",
                 "The language model is currently unavailable, please try again later", List.of());
         return ResponseEntity.status(HttpStatus.BAD_GATEWAY).body(body);

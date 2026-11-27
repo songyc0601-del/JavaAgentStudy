@@ -60,7 +60,8 @@ curl -N -X POST http://localhost:8080/api/explanations/stream \
 - **响应**：`Content-Type: text/event-stream`，每个文本分片对应一个 SSE 事件（`data:` 行），按模型生成顺序推送；客户端把所有 `data` 按序拼接即得完整讲解。SSE 规范规定 `data:` 后的一个前导空格是字段分隔符，解析时需去掉。
 - **失败时的行为**：
   - `topic` 为空白或缺失、请求体不是合法 JSON：返回 HTTP 400（JSON 错误体，`error` 为 `VALIDATION_FAILED` 或 `MALFORMED_REQUEST`），不会调用模型。即使客户端带了 `Accept: text/event-stream`，错误体也固定为 `application/json`。
-  - 流式调用中模型出错：`Flux` 在订阅后才产生错误，此时响应通常已开始写出，HTTP 状态码无法保证为 502；已推送的分片会保留，流随后异常终止。服务端会把错误转换为 `ModelCallException`，不向客户端返回上游异常原文。该行为目前仅有离线测试做弱断言，服务端日志是否记录尚未验证。
+  - 流式调用中模型出错：`Flux` 在订阅后才产生错误，此时响应通常已开始写出，HTTP 状态码无法保证为 502；已推送的分片会保留，流随后异常终止。服务端会把错误转换为 `ModelCallException` 并记录 `ERROR` 级别日志（含已发送分片数、总字符数、耗时与异常堆栈），不向客户端返回上游异常原文。
+- **调试日志**：`stage-01` 在 `application.yml` 中默认将 `dev.javaagentstudy.stage01` 设为 `DEBUG`（可通过环境变量 `STAGE01_LOG_LEVEL` 覆盖），以简体中文记录接口入口、提示词分支、400/502 异常分支、SSE 分片序号与字符数，以及流式完成/取消/失败状态；提示词正文与模型输出正文不会写入日志。
 - **当前限制**：流中途出错时尚未向客户端推送专门的错误事件，客户端只能感知到连接异常结束。
 - **离线测试**：`common` 的 `FakeChatModel` 提供 `streamingChunks(...)`（按序回放预设分片）和 `streamingChunksThenFailing(...)`（回放分片后以预设异常终止），流式接口测试无需网络与 API Key。
 

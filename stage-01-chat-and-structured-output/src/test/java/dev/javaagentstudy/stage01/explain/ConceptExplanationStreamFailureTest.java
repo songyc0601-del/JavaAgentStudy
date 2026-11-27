@@ -64,18 +64,15 @@ class ConceptExplanationStreamFailureTest {
                 .andReturn();
 
         // 流中途出错时响应已开始写出，状态码无法再改成 502。
-        // 不再吞掉异常：无论 asyncDispatch 抛出还是正常返回，都显式记录结果，
-        // 这样“流确实出错”是被断言的，而不是任何结果都能通过。
-        String body = asyncResult.getResponse().getContentAsString(StandardCharsets.UTF_8);
+        // 先等待 asyncDispatch 结束（无论是正常返回还是抛出分发异常），再读取已写出的响应体，
+        // 避免主线程在异步流线程尚未写出分片前就提前读取 MockHttpServletResponse 产生竞态。
         Throwable failure = null;
         try {
-            body += mockMvc.perform(asyncDispatch(asyncResult))
-                    .andReturn()
-                    .getResponse()
-                    .getContentAsString(StandardCharsets.UTF_8);
+            mockMvc.perform(asyncDispatch(asyncResult));
         } catch (Exception ex) {
             failure = ex;
         }
+        String body = asyncResult.getResponse().getContentAsString(StandardCharsets.UTF_8);
         Throwable asyncError = asyncResult.getAsyncResult() instanceof Throwable t ? t : null;
 
         // 验证：流以错误终止（异步结果或分发异常二者之一体现出错）
