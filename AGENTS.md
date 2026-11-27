@@ -20,6 +20,15 @@ Trust the output of `mvn -B -ntp test` over IDE diagnostics: the IDE lags behind
 
 Primary-source Spring AI 2.1.0 GA / Spring Boot 4.2.x APIs, BOM coordinates, deprecations, and agentic primitives—read `docs/research/java-agent-spring-ai.md` before writing or reviewing Spring AI code or dependencies.
 
+### Branch logging
+
+Every request handler and service method logs the branch it takes, so a developer debugging an endpoint can read from the log alone which path ran. Use SLF4J (`LoggerFactory.getLogger(<Class>.class)`) and log, in Simplified Chinese:
+
+- **Entry**: endpoint or method name plus non-sensitive inputs (`topic` length, whether `focus` is present, sync vs stream) at `INFO`.
+- **Each branch**: validation failure, optional-field present or absent, fallback, early return, and the success exit, one line per branch at `INFO`, naming the branch and the condition that selected it.
+- **Failure**: model error, mid-stream error, and mapped exceptions at `WARN` or `ERROR` with the cause attached.
+- **Content**: log lengths, counts, and chunk indexes; keep prompt text, model output, API keys, and tokens out of logs.
+
 ### Issue wrap-up
 
 An issue is done only when every item below is accounted for. Report each one in the final summary as done, not needed (with the reason), or deferred.
