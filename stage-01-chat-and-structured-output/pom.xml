@@ -48,5 +48,11 @@
             <artifactId>spring-boot-starter-test</artifactId>
             <scope>test</scope>
         </dependency>
+        <!-- 真实 HTTP SSE 客户端测试：WebClient 可以逐段消费 text/event-stream，MockMvc 做不到。 -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-webclient</artifactId>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
 </project>

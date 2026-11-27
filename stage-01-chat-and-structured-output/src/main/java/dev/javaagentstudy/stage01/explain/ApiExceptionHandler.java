@@ -5,6 +5,7 @@ import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -30,7 +31,9 @@ public class ApiExceptionHandler {
                 .map(fieldError -> fieldError.getField() + ": " + fieldError.getDefaultMessage())
                 .toList();
         ApiError body = new ApiError("VALIDATION_FAILED", "Request validation failed", details);
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(body);
+        // 显式指定 JSON：SSE 客户端会带 Accept: text/event-stream，
+        // 不指定时 ApiError 无法按该类型序列化，会返回空响应体。
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).contentType(MediaType.APPLICATION_JSON).body(body);
     }
 
     /** 请求体为空或不是合法 JSON：这是调用方的错误，返回 400，不会调用模型。 */
@@ -38,7 +41,8 @@ public class ApiExceptionHandler {
     public ResponseEntity<ApiError> handleMalformedRequest(HttpMessageNotReadableException ex) {
         ApiError body = new ApiError("MALFORMED_REQUEST",
                 "Request body is missing or is not valid JSON", List.of());
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(body);
+        // 同上：流式端点的客户端带 Accept: text/event-stream，这里同样固定为 JSON，避免空响应体。
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).contentType(MediaType.APPLICATION_JSON).body(body);
     }
 
     /**

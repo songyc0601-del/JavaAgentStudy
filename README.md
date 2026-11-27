@@ -17,8 +17,8 @@
 
 | 模块 | 核心主题 | 状态 |
 | :--- | :--- | :--- |
-| `common` | 共享领域模型、默认初级 Java `Knowledge Source` 与离线测试替身 | 规划中（Milestone 1） |
-| `stage-01-chat-and-structured-output` | `ChatClient` 同步 / SSE 流式讲解与强类型 `Exercise` 结构化输出 | 规划中（Milestone 1） |
+| `common` | 共享领域模型、默认初级 Java `Knowledge Source` 与离线测试替身 | 已完成（Milestone 1 / Ticket 2，`Knowledge Source` 加载见下文） |
+| `stage-01-chat-and-structured-output` | `ChatClient` 同步 / SSE 流式讲解与强类型 `Exercise` 结构化输出 | 进行中（Milestone 1：同步与 SSE 流式讲解已完成，`Exercise` 结构化输出待开发） |
 | `stage-02-tools-and-advisors` | `@Tool`、`ToolCallingAdvisor`、手动循环对比、自定义 `BaseAdvisor` 与 `requiresConfirmation` 人工确认 | 待开启 |
 | `stage-03-session-and-rag` | Spring AI 2.1 `Session API`、ETL Pipeline、模块化 RAG 与 `PostgreSQL + pgvector`（Docker Compose） | 待开启 |
 | `stage-04-mcp` | 自建 Java MCP Server（`@McpTool` / Streamable HTTP）与 MCP Client 集成 | 待开启 |
@@ -39,11 +39,46 @@ set -a && source .env && set +a
 # 3. 启动 stage-01（默认使用 OpenAI-compatible 云端端点）
 mvn -pl stage-01-chat-and-structured-output -am spring-boot:run
 
-# 4. 调用同步概念讲解接口
+# 启动后可在浏览器访问 http://localhost:8080/ 打开概念讲解验证页面，
+# 或直接通过 curl 调用同步概念讲解接口：
 curl -X POST http://localhost:8080/api/explanations \
   -H 'Content-Type: application/json' \
   -d '{"topic":"集合框架","focus":"ArrayList 与 LinkedList 的区别"}'
+
+# 5. 调用 SSE 流式概念讲解接口（-N 关闭 curl 缓冲，才能看到逐段输出）
+curl -N -X POST http://localhost:8080/api/explanations/stream \
+  -H 'Content-Type: application/json' \
+  -H 'Accept: text/event-stream' \
+  -d '{"topic":"集合框架","focus":"ArrayList 与 LinkedList 的区别"}'
 ```
+
+## SSE 流式概念讲解（`stage-01`）
+
+`POST /api/explanations/stream` 与同步接口 `POST /api/explanations` 使用同一套入参和面向初级 Java `Learner` 的讲解提示词，区别是模型每生成一段文本就立即推送一段。
+
+- **请求**：JSON 请求体，必填 `topic`，可选 `focus`。
+- **响应**：`Content-Type: text/event-stream`，每个文本分片对应一个 SSE 事件（`data:` 行），按模型生成顺序推送；客户端把所有 `data` 按序拼接即得完整讲解。SSE 规范规定 `data:` 后的一个前导空格是字段分隔符，解析时需去掉。
+- **失败时的行为**：
+  - `topic` 为空白或缺失、请求体不是合法 JSON：返回 HTTP 400（JSON 错误体，`error` 为 `VALIDATION_FAILED` 或 `MALFORMED_REQUEST`），不会调用模型。即使客户端带了 `Accept: text/event-stream`，错误体也固定为 `application/json`。
+  - 流式调用中模型出错：`Flux` 在订阅后才产生错误，此时响应通常已开始写出，HTTP 状态码无法保证为 502；已推送的分片会保留，流随后异常终止。服务端会把错误转换为 `ModelCallException`，不向客户端返回上游异常原文。该行为目前仅有离线测试做弱断言，服务端日志是否记录尚未验证。
+- **当前限制**：流中途出错时尚未向客户端推送专门的错误事件，客户端只能感知到连接异常结束。
+- **离线测试**：`common` 的 `FakeChatModel` 提供 `streamingChunks(...)`（按序回放预设分片）和 `streamingChunksThenFailing(...)`（回放分片后以预设异常终止），流式接口测试无需网络与 API Key。
+
+## Knowledge Source 加载（`common`）
+
+`KnowledgeSourceLoader`（包 `dev.javaagentstudy.common.knowledge`）负责加载供 Study Agent 检索与引用的 `Knowledge Source`。
+
+- **内置资料**：`common/src/main/resources/knowledge/` 下共 4 篇初级 Java `Topic` 的 Markdown（集合框架与 `HashMap`、JVM 内存基础、并发入门、Spring IoC/AOP 常见误区）。每篇用 frontmatter 声明 `id`、`title`、`topic`，缺失任一字段或正文为空会在加载时抛出 `IllegalStateException`。
+- **用法**：
+  - `loader.load()`：只返回内置资料。
+  - `loader.load(Path externalDirectory)`：内置资料在前，外部笔记按文件名排序追加在后。
+- **外部笔记规则**：
+  - 只读取目录第一层的 `.md` / `.txt` 文件（扩展名不区分大小写）。
+  - 自动忽略隐藏文件、子目录、其他扩展名和纯空白笔记。
+  - 可选 frontmatter 提供 `id`、`title`、`topic`；缺失时 `title` 依次回退为首个一级标题、文件名，`topic` 回退为 `title`。
+  - `id` 与已有资料冲突时自动改为 `external:<文件名>`（必要时追加数字后缀）。
+- **失败时的行为**：外部目录为 `null`、不存在、不是目录或为空时，返回内置默认集合，不抛异常。目录无法列出或单个文件不可读时，记录 WARNING 日志后跳过，其余资料照常返回。
+- **当前限制**：外部目录只能通过 `load(Path)` 参数传入，尚无配置属性（如 `application.yml`）；符号链接未做专门处理。
 
 ## 核心文档索引
 

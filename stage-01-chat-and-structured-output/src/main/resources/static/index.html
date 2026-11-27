@@ -1,0 +1,1682 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>概念讲解接口验证台 · Stage 01</title>
+  <style>
+    :root {
+      --bg: #f6f8fa;
+      --surface: #ffffff;
+      --surface-subtle: #f0f4f8;
+      --ink: #17212b;
+      --ink-muted: #52606d;
+      --ink-faint: #7b8794;
+      --border: #dce3eb;
+      --border-strong: #bcc8d6;
+      --accent: #1d4ed8;
+      --accent-hover: #1e40af;
+      --accent-soft: #eff4ff;
+      --ok: #15803d;
+      --ok-soft: #ecfdf3;
+      --warn: #b45309;
+      --warn-soft: #fffbeb;
+      --err: #b91c1c;
+      --err-soft: #fef2f2;
+      --code-bg: #161e29;
+      --code-ink: #e6edf3;
+      --radius-sm: 6px;
+      --radius-md: 10px;
+      --font-sans: -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Segoe UI", sans-serif;
+      --font-mono: "JetBrains Mono", "SF Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: var(--font-sans);
+      font-size: 15px;
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* 顶部栏：直接呈现当前验证的控制器与两条端点路径 */
+    .topbar {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 14px 24px;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px 20px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: baseline;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .brand h1 {
+      margin: 0;
+      font-size: 18px;
+      font-weight: 650;
+      letter-spacing: -0.01em;
+    }
+
+    .brand-sub {
+      font-size: 13px;
+      color: var(--ink-muted);
+    }
+
+    .endpoint-bar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-family: var(--font-mono);
+      font-size: 12.5px;
+      background: var(--surface-subtle);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 5px 10px;
+      color: var(--ink);
+    }
+
+    .method-tag {
+      font-weight: 700;
+      color: var(--accent);
+    }
+
+    /* 主工作区：左侧请求配置，右侧响应与检视 */
+    .workspace {
+      max-width: 1320px;
+      margin: 0 auto;
+      padding: 20px 24px 36px;
+      display: grid;
+      grid-template-columns: 390px minmax(0, 1fr);
+      gap: 20px;
+      align-items: start;
+    }
+
+    .panel {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+    }
+
+    .panel-body {
+      padding: 18px 20px;
+    }
+
+    .section-block + .section-block {
+      margin-top: 18px;
+      padding-top: 18px;
+      border-top: 1px solid var(--border);
+    }
+
+    .field-label {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      font-size: 13.5px;
+      font-weight: 600;
+      color: var(--ink);
+      margin-bottom: 6px;
+    }
+
+    .field-hint {
+      font-size: 12px;
+      font-weight: 400;
+      color: var(--ink-faint);
+    }
+
+    /* 模式切换分段控件 */
+    .segmented {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      background: var(--surface-subtle);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 3px;
+      gap: 3px;
+    }
+
+    .segmented button {
+      border: 0;
+      background: transparent;
+      color: var(--ink-muted);
+      font-family: inherit;
+      font-size: 13.5px;
+      font-weight: 500;
+      padding: 8px 10px;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: background-color 0.12s ease, color 0.12s ease;
+    }
+
+    .segmented button:hover {
+      color: var(--ink);
+    }
+
+    .segmented button[aria-pressed="true"] {
+      background: var(--surface);
+      color: var(--accent);
+      font-weight: 600;
+      box-shadow: 0 1px 2px rgba(23, 33, 43, 0.08);
+    }
+
+    .mode-note {
+      margin: 8px 0 0;
+      font-size: 12.5px;
+      color: var(--ink-muted);
+    }
+
+    /* 快捷验证用例 */
+    .preset-group + .preset-group {
+      margin-top: 10px;
+    }
+
+    .preset-group-title {
+      font-size: 12px;
+      color: var(--ink-muted);
+      margin-bottom: 6px;
+    }
+
+    .preset-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .preset-btn {
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--ink);
+      font-family: inherit;
+      font-size: 12.5px;
+      padding: 5px 10px;
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      transition: border-color 0.12s ease, background-color 0.12s ease;
+    }
+
+    .preset-btn:hover {
+      border-color: var(--accent);
+      background: var(--accent-soft);
+      color: var(--accent);
+    }
+
+    .preset-btn.preset-err {
+      border-color: #f3d0d0;
+      color: var(--err);
+      background: #fffafa;
+    }
+
+    .preset-btn.preset-err:hover {
+      border-color: var(--err);
+      background: var(--err-soft);
+    }
+
+    /* 输入控件 */
+    .field + .field {
+      margin-top: 12px;
+    }
+
+    input[type="text"],
+    textarea {
+      width: 100%;
+      border: 1px solid var(--border-strong);
+      border-radius: var(--radius-sm);
+      padding: 9px 11px;
+      font-family: var(--font-sans);
+      font-size: 14px;
+      color: var(--ink);
+      background: var(--surface);
+      transition: border-color 0.12s ease, box-shadow 0.12s ease;
+    }
+
+    textarea {
+      resize: vertical;
+      min-height: 76px;
+      line-height: 1.5;
+    }
+
+    textarea.mono-input {
+      font-family: var(--font-mono);
+      font-size: 13px;
+      min-height: 112px;
+    }
+
+    input[type="text"]:focus,
+    textarea:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(29, 78, 216, 0.14);
+    }
+
+    button:focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: 2px;
+    }
+
+    .checkbox-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      color: var(--ink-muted);
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .checkbox-row input {
+      margin: 0;
+      accent-color: var(--accent);
+      width: 15px;
+      height: 15px;
+    }
+
+    .payload-preview {
+      margin-top: 10px;
+      background: var(--surface-subtle);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 9px 11px;
+      font-family: var(--font-mono);
+      font-size: 12.5px;
+      color: var(--ink-muted);
+      white-space: pre-wrap;
+      word-break: break-all;
+    }
+
+    /* 操作按钮组 */
+    .actions {
+      display: flex;
+      gap: 8px;
+      margin-top: 14px;
+    }
+
+    .btn-primary {
+      flex: 1;
+      border: 0;
+      background: var(--accent);
+      color: #ffffff;
+      font-family: inherit;
+      font-size: 14px;
+      font-weight: 600;
+      padding: 10px 16px;
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      transition: background-color 0.12s ease;
+    }
+
+    .btn-primary:hover:not(:disabled) {
+      background: var(--accent-hover);
+    }
+
+    .btn-primary:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    .btn-secondary {
+      border: 1px solid var(--border-strong);
+      background: var(--surface);
+      color: var(--ink);
+      font-family: inherit;
+      font-size: 13.5px;
+      font-weight: 500;
+      padding: 10px 14px;
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+    }
+
+    .btn-secondary:hover:not(:disabled) {
+      background: var(--surface-subtle);
+    }
+
+    .btn-secondary:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+    }
+
+    .btn-stop {
+      border: 1px solid #f3c4c4;
+      background: var(--err-soft);
+      color: var(--err);
+      font-family: inherit;
+      font-size: 13.5px;
+      font-weight: 600;
+      padding: 10px 14px;
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+    }
+
+    .btn-stop:hover {
+      background: #fee2e2;
+    }
+
+    .shortcut-hint {
+      margin-top: 8px;
+      font-size: 12px;
+      color: var(--ink-faint);
+    }
+
+    /* 右侧响应主区域 */
+    .response-panel {
+      display: flex;
+      flex-direction: column;
+      min-height: 600px;
+    }
+
+    .status-strip {
+      padding: 14px 20px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px 16px;
+    }
+
+    .status-left {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .status-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12.5px;
+      font-weight: 600;
+      padding: 3px 10px;
+      border-radius: 999px;
+      background: var(--surface-subtle);
+      color: var(--ink-muted);
+      border: 1px solid var(--border);
+    }
+
+    .status-pill[data-state="loading"] {
+      background: var(--accent-soft);
+      color: var(--accent);
+      border-color: #c7d7fe;
+    }
+
+    .status-pill[data-state="ok"] {
+      background: var(--ok-soft);
+      color: var(--ok);
+      border-color: #bbf7d0;
+    }
+
+    .status-pill[data-state="warn"] {
+      background: var(--warn-soft);
+      color: var(--warn);
+      border-color: #fde68a;
+    }
+
+    .status-pill[data-state="error"] {
+      background: var(--err-soft);
+      color: var(--err);
+      border-color: #fecaca;
+    }
+
+    .metrics {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 14px;
+      font-size: 12.5px;
+      color: var(--ink-muted);
+    }
+
+    .metric strong {
+      font-family: var(--font-mono);
+      font-weight: 600;
+      color: var(--ink);
+    }
+
+    /* 视图标签页 */
+    .tabs {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 20px;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface);
+      gap: 12px;
+    }
+
+    .tab-list {
+      display: flex;
+      gap: 4px;
+    }
+
+    .tab-btn {
+      border: 0;
+      background: transparent;
+      color: var(--ink-muted);
+      font-family: inherit;
+      font-size: 13.5px;
+      font-weight: 500;
+      padding: 11px 12px;
+      border-bottom: 2px solid transparent;
+      cursor: pointer;
+    }
+
+    .tab-btn:hover {
+      color: var(--ink);
+    }
+
+    .tab-btn[aria-selected="true"] {
+      color: var(--accent);
+      font-weight: 600;
+      border-bottom-color: var(--accent);
+    }
+
+    .tab-badge {
+      display: inline-block;
+      margin-left: 5px;
+      padding: 0 6px;
+      border-radius: 999px;
+      background: var(--surface-subtle);
+      color: var(--ink-muted);
+      font-family: var(--font-mono);
+      font-size: 11.5px;
+    }
+
+    .copy-btn {
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--ink-muted);
+      font-family: inherit;
+      font-size: 12.5px;
+      padding: 4px 10px;
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+    }
+
+    .copy-btn:hover:not(:disabled) {
+      color: var(--ink);
+      border-color: var(--border-strong);
+    }
+
+    .copy-btn:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+    }
+
+    /* 响应正文区 */
+    .tab-panel {
+      padding: 22px 24px 28px;
+      flex: 1;
+    }
+
+    .hidden {
+      display: none !important;
+    }
+
+    .empty-state {
+      padding: 48px 16px;
+      text-align: left;
+      max-width: 540px;
+      color: var(--ink-muted);
+    }
+
+    .empty-state h2 {
+      margin: 0 0 8px;
+      font-size: 17px;
+      color: var(--ink);
+    }
+
+    .empty-state p {
+      margin: 0 0 12px;
+      font-size: 14px;
+    }
+
+    .empty-checklist {
+      margin: 0;
+      padding-left: 18px;
+      font-size: 13.5px;
+      line-height: 1.8;
+    }
+
+    .topic-header {
+      display: flex;
+      align-items: baseline;
+      gap: 10px;
+      margin-bottom: 14px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .topic-header-label {
+      font-size: 12.5px;
+      color: var(--ink-muted);
+    }
+
+    .topic-header-value {
+      font-size: 18px;
+      font-weight: 650;
+      color: var(--ink);
+    }
+
+    /* 讲解 Markdown 阅读排版（严格控制行宽在 68ch 内） */
+    .prose {
+      max-width: 68ch;
+      font-size: 15px;
+      line-height: 1.78;
+      color: var(--ink);
+      word-break: break-word;
+    }
+
+    .prose h1, .prose h2, .prose h3, .prose h4 {
+      margin: 1.3em 0 0.5em;
+      line-height: 1.35;
+      color: var(--ink);
+    }
+
+    .prose h1 { font-size: 1.3em; }
+    .prose h2 { font-size: 1.18em; }
+    .prose h3 { font-size: 1.07em; }
+
+    .prose p {
+      margin: 0.65em 0;
+    }
+
+    .prose ul, .prose ol {
+      margin: 0.6em 0;
+      padding-left: 1.5em;
+    }
+
+    .prose li + li {
+      margin-top: 0.3em;
+    }
+
+    .prose code {
+      font-family: var(--font-mono);
+      font-size: 0.88em;
+      background: var(--surface-subtle);
+      border: 1px solid var(--border);
+      padding: 1px 5px;
+      border-radius: 4px;
+    }
+
+    .prose pre {
+      margin: 0.9em 0;
+      padding: 13px 15px;
+      background: var(--code-bg);
+      color: var(--code-ink);
+      border-radius: var(--radius-sm);
+      overflow-x: auto;
+      line-height: 1.55;
+      font-size: 13px;
+    }
+
+    .prose pre code {
+      background: transparent;
+      border: 0;
+      padding: 0;
+      color: inherit;
+      font-size: inherit;
+    }
+
+    .stream-cursor {
+      display: inline-block;
+      width: 8px;
+      height: 1.1em;
+      background: var(--accent);
+      vertical-align: -2px;
+      margin-left: 2px;
+      animation: blink 1s steps(2, start) infinite;
+    }
+
+    @keyframes blink {
+      to { opacity: 0; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .stream-cursor {
+        animation: none;
+      }
+    }
+
+    /* 结构化错误诊断卡片 */
+    .error-box {
+      border: 1px solid #fecaca;
+      background: var(--err-soft);
+      border-radius: var(--radius-md);
+      padding: 16px 18px;
+      max-width: 68ch;
+    }
+
+    .error-box-warn {
+      border-color: #fde68a;
+      background: var(--warn-soft);
+      margin-bottom: 16px;
+    }
+
+    .error-title {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin: 0 0 8px;
+      font-size: 15px;
+      font-weight: 650;
+      color: var(--err);
+    }
+
+    .error-box-warn .error-title {
+      color: var(--warn);
+    }
+
+    .error-code {
+      font-family: var(--font-mono);
+      font-size: 12.5px;
+      background: #ffffff;
+      border: 1px solid #fecaca;
+      padding: 2px 8px;
+      border-radius: 4px;
+    }
+
+    .error-msg {
+      margin: 0;
+      font-size: 14px;
+      color: var(--ink);
+    }
+
+    .error-details {
+      margin: 10px 0 0;
+      padding-left: 18px;
+      font-family: var(--font-mono);
+      font-size: 13px;
+      color: var(--err);
+    }
+
+    /* SSE 分片日志表 */
+    .chunk-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+
+    .chunk-table th,
+    .chunk-table td {
+      text-align: left;
+      padding: 8px 10px;
+      border-bottom: 1px solid var(--border);
+      vertical-align: top;
+    }
+
+    .chunk-table th {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--ink-muted);
+      background: var(--surface-subtle);
+    }
+
+    .chunk-mono {
+      font-family: var(--font-mono);
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    .ws-marker {
+      color: var(--accent);
+      opacity: 0.7;
+    }
+
+    /* 原始请求与响应检视 */
+    .raw-block + .raw-block {
+      margin-top: 18px;
+    }
+
+    .raw-block h3 {
+      margin: 0 0 8px;
+      font-size: 13.5px;
+      font-weight: 600;
+      color: var(--ink);
+    }
+
+    .raw-pre {
+      margin: 0;
+      padding: 13px 15px;
+      background: var(--surface-subtle);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      font-family: var(--font-mono);
+      font-size: 12.5px;
+      line-height: 1.55;
+      white-space: pre-wrap;
+      word-break: break-word;
+      max-height: 360px;
+      overflow: auto;
+    }
+
+    /* 响应式：中小屏上下布局 */
+    @media (max-width: 960px) {
+      .workspace {
+        grid-template-columns: 1fr;
+        padding: 16px;
+      }
+
+      .response-panel {
+        min-height: 420px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <h1>概念讲解接口验证台</h1>
+      <span class="brand-sub">ConceptExplanationController 联调与验收工具</span>
+    </div>
+    <div class="endpoint-bar" aria-label="当前目标接口">
+      <span class="method-tag">POST</span>
+      <span id="activeEndpoint">/api/explanations/stream</span>
+    </div>
+  </header>
+
+  <main class="workspace">
+    <!-- 左侧：请求配置控制台 -->
+    <section class="panel" aria-label="请求配置">
+      <div class="panel-body">
+        <div class="section-block">
+          <div class="field-label">
+            <span>调用接口</span>
+          </div>
+          <div class="segmented" role="group" aria-label="选择同步或流式接口">
+            <button type="button" id="modeStreamBtn" aria-pressed="true">流式 SSE</button>
+            <button type="button" id="modeSyncBtn" aria-pressed="false">同步 JSON</button>
+          </div>
+          <p class="mode-note" id="modeNote">
+            调用 <code>/api/explanations/stream</code>，携带 <code>Accept: text/event-stream</code> 逐片接收推送。
+          </p>
+        </div>
+
+        <div class="section-block">
+          <div class="field-label">
+            <span>快捷验证用例</span>
+            <span class="field-hint">点击填充参数</span>
+          </div>
+
+          <div class="preset-group">
+            <div class="preset-group-title">正常讲解</div>
+            <div class="preset-list">
+              <button type="button" class="preset-btn" data-preset="collections">集合框架 + 重点</button>
+              <button type="button" class="preset-btn" data-preset="jvm">JVM 内存基础</button>
+              <button type="button" class="preset-btn" data-preset="concurrency">并发入门（无重点）</button>
+            </div>
+          </div>
+
+          <div class="preset-group">
+            <div class="preset-group-title">入参校验与异常（应返回 400）</div>
+            <div class="preset-list">
+              <button type="button" class="preset-btn preset-err" data-preset="blank-topic">空白 topic</button>
+              <button type="button" class="preset-btn preset-err" data-preset="missing-topic">缺失 topic</button>
+              <button type="button" class="preset-btn preset-err" data-preset="malformed-json">畸形 JSON</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="section-block">
+          <!-- 注意：刻意不加 HTML5 required 属性，方便把空/空白 topic 直接发给后端验证 @NotBlank。 -->
+          <form id="explainForm" novalidate>
+            <div id="formFields">
+              <div class="field">
+                <label class="field-label" for="topicInput">
+                  <span>主题（topic）</span>
+                  <span class="field-hint">后端 @NotBlank 校验</span>
+                </label>
+                <input
+                  type="text"
+                  id="topicInput"
+                  value="集合框架"
+                  placeholder="例如：集合框架、JVM 内存基础、并发入门"
+                  autocomplete="off"
+                />
+              </div>
+
+              <div class="field">
+                <label class="field-label" for="focusInput">
+                  <span>关注重点（focus）</span>
+                  <span class="field-hint">可选，留空时不传该字段</span>
+                </label>
+                <textarea
+                  id="focusInput"
+                  placeholder="例如：ArrayList 与 LinkedList 的区别"
+                >ArrayList 与 LinkedList 的区别</textarea>
+              </div>
+            </div>
+
+            <div class="field" style="margin-top: 12px;">
+              <label class="checkbox-row">
+                <input type="checkbox" id="rawModeToggle" />
+                <span>手动编辑原始请求体（验证缺失字段或畸形 JSON）</span>
+              </label>
+            </div>
+
+            <div class="field hidden" id="rawBodyWrapper">
+              <label class="field-label" for="rawBodyInput">
+                <span>原始请求体</span>
+                <span class="field-hint">原样作为 HTTP Body 发送</span>
+              </label>
+              <textarea id="rawBodyInput" class="mono-input" spellcheck="false"></textarea>
+            </div>
+
+            <div id="previewWrapper">
+              <div class="payload-preview" id="payloadPreview" aria-label="将要发送的 JSON 预览"></div>
+            </div>
+
+            <div class="actions">
+              <button type="submit" class="btn-primary" id="submitBtn">开始流式讲解</button>
+              <button type="button" class="btn-stop hidden" id="stopBtn">停止接收</button>
+              <button type="button" class="btn-secondary" id="clearBtn">清空结果</button>
+            </div>
+            <div class="shortcut-hint">快捷键：Ctrl / Cmd + Enter 发送请求</div>
+          </form>
+        </div>
+      </div>
+    </section>
+
+    <!-- 右侧：响应结果与检视面板 -->
+    <section class="panel response-panel" aria-label="响应结果">
+      <div class="status-strip">
+        <div class="status-left">
+          <span class="status-pill" id="statusPill" data-state="idle">待发送</span>
+          <span id="httpMeta" style="font-family: var(--font-mono); font-size: 12.5px; color: var(--ink-muted);"></span>
+        </div>
+        <div class="metrics" id="metricsBar">
+          <span class="metric">耗时 <strong id="metricTotal">-</strong></span>
+          <span class="metric" id="metricTtftWrap">首字 <strong id="metricTtft">-</strong></span>
+          <span class="metric" id="metricChunksWrap">分片 <strong id="metricChunks">0</strong></span>
+          <span class="metric">字数 <strong id="metricChars">0</strong></span>
+        </div>
+      </div>
+
+      <div class="tabs">
+        <div class="tab-list" role="tablist" aria-label="响应视图切换">
+          <button type="button" class="tab-btn" role="tab" id="tabRendered" aria-selected="true" aria-controls="panelRendered">
+            讲解内容
+          </button>
+          <button type="button" class="tab-btn" role="tab" id="tabChunks" aria-selected="false" aria-controls="panelChunks">
+            SSE 分片<span class="tab-badge" id="chunkBadge">0</span>
+          </button>
+          <button type="button" class="tab-btn" role="tab" id="tabRaw" aria-selected="false" aria-controls="panelRaw">
+            请求与响应报文
+          </button>
+        </div>
+        <button type="button" class="copy-btn" id="copyBtn" disabled>复制正文</button>
+      </div>
+
+      <!-- 视图 1：渲染后的讲解内容 / 结构化错误 -->
+      <div class="tab-panel" id="panelRendered" role="tabpanel" aria-labelledby="tabRendered" aria-live="polite">
+        <div class="empty-state" id="emptyState">
+          <h2>准备就绪，可以开始验证</h2>
+          <p>在左侧选择调用模式并发送请求，或直接点击快捷验证用例核对接口行为：</p>
+          <ul class="empty-checklist">
+            <li><strong>流式 SSE</strong>：验证 <code>POST /api/explanations/stream</code> 按分片实时推送且顺序正确。</li>
+            <li><strong>同步 JSON</strong>：验证 <code>POST /api/explanations</code> 返回包含 <code>topic</code> 与 <code>explanation</code> 的 JSON。</li>
+            <li><strong>错误处理</strong>：验证空白/缺失 <code>topic</code>、畸形 JSON 返回 <code>400</code>，上游模型不可用时返回 <code>502</code> 且不泄露内部异常细节。</li>
+          </ul>
+        </div>
+
+        <div id="streamWarningBox" class="error-box error-box-warn hidden">
+          <div class="error-title" id="streamWarningTitle">流异常中断</div>
+          <p class="error-msg" id="streamWarningMsg"></p>
+        </div>
+
+        <div id="errorBox" class="error-box hidden">
+          <div class="error-title">
+            <span id="errorHeading">请求失败</span>
+            <span class="error-code" id="errorCode"></span>
+          </div>
+          <p class="error-msg" id="errorMessage"></p>
+          <ul class="error-details hidden" id="errorDetails"></ul>
+        </div>
+
+        <div id="resultContent" class="hidden">
+          <div class="topic-header hidden" id="topicHeader">
+            <span class="topic-header-label">返回主题</span>
+            <span class="topic-header-value" id="topicHeaderValue"></span>
+          </div>
+          <article class="prose" id="markdownOutput"></article>
+        </div>
+      </div>
+
+      <!-- 视图 2：SSE 分片明细 -->
+      <div class="tab-panel hidden" id="panelChunks" role="tabpanel" aria-labelledby="tabChunks">
+        <div id="chunksEmpty" style="color: var(--ink-muted); font-size: 14px;">
+          暂无 SSE 分片记录。使用「流式 SSE」模式发送请求后，这里会按到达顺序展示每个 <code>data:</code> 事件的时间戳与文本片段。
+        </div>
+        <table class="chunk-table hidden" id="chunksTable">
+          <thead>
+            <tr>
+              <th style="width: 56px;">序号</th>
+              <th style="width: 88px;">到达耗时</th>
+              <th style="width: 72px;">长度</th>
+              <th>分片文本（↵ 表示换行）</th>
+            </tr>
+          </thead>
+          <tbody id="chunksTbody"></tbody>
+        </table>
+      </div>
+
+      <!-- 视图 3：原始 HTTP 请求与响应 -->
+      <div class="tab-panel hidden" id="panelRaw" role="tabpanel" aria-labelledby="tabRaw">
+        <div class="raw-block">
+          <h3>已发送请求</h3>
+          <pre class="raw-pre" id="rawRequestPre">尚未发送请求。</pre>
+        </div>
+        <div class="raw-block">
+          <h3>服务端原始响应</h3>
+          <pre class="raw-pre" id="rawResponsePre">尚未收到响应。</pre>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    (function () {
+      'use strict';
+
+      // ---------- 状态 ----------
+      const state = {
+        mode: 'stream', // 'stream' | 'sync'
+        isLoading: false,
+        abortController: null,
+        explanationText: '',
+        chunks: [],
+        rawResponseText: ''
+      };
+
+      // ---------- 预设验证用例 ----------
+      const PRESETS = {
+        collections: {
+          raw: false,
+          topic: '集合框架',
+          focus: 'ArrayList 与 LinkedList 的区别'
+        },
+        jvm: {
+          raw: false,
+          topic: 'JVM 内存基础',
+          focus: '堆、虚拟机栈与元空间各自存放什么'
+        },
+        concurrency: {
+          raw: false,
+          topic: '并发入门',
+          focus: ''
+        },
+        'blank-topic': {
+          raw: false,
+          topic: '   ',
+          focus: ''
+        },
+        'missing-topic': {
+          raw: true,
+          body: JSON.stringify({ focus: '泛型' }, null, 2)
+        },
+        'malformed-json': {
+          raw: true,
+          body: '{not json'
+        }
+      };
+
+      // ---------- DOM 引用 ----------
+      const el = {
+        activeEndpoint: document.getElementById('activeEndpoint'),
+        modeStreamBtn: document.getElementById('modeStreamBtn'),
+        modeSyncBtn: document.getElementById('modeSyncBtn'),
+        modeNote: document.getElementById('modeNote'),
+        explainForm: document.getElementById('explainForm'),
+        formFields: document.getElementById('formFields'),
+        topicInput: document.getElementById('topicInput'),
+        focusInput: document.getElementById('focusInput'),
+        rawModeToggle: document.getElementById('rawModeToggle'),
+        rawBodyWrapper: document.getElementById('rawBodyWrapper'),
+        rawBodyInput: document.getElementById('rawBodyInput'),
+        previewWrapper: document.getElementById('previewWrapper'),
+        payloadPreview: document.getElementById('payloadPreview'),
+        submitBtn: document.getElementById('submitBtn'),
+        stopBtn: document.getElementById('stopBtn'),
+        clearBtn: document.getElementById('clearBtn'),
+        statusPill: document.getElementById('statusPill'),
+        httpMeta: document.getElementById('httpMeta'),
+        metricTotal: document.getElementById('metricTotal'),
+        metricTtftWrap: document.getElementById('metricTtftWrap'),
+        metricTtft: document.getElementById('metricTtft'),
+        metricChunksWrap: document.getElementById('metricChunksWrap'),
+        metricChunks: document.getElementById('metricChunks'),
+        metricChars: document.getElementById('metricChars'),
+        chunkBadge: document.getElementById('chunkBadge'),
+        copyBtn: document.getElementById('copyBtn'),
+        tabRendered: document.getElementById('tabRendered'),
+        tabChunks: document.getElementById('tabChunks'),
+        tabRaw: document.getElementById('tabRaw'),
+        panelRendered: document.getElementById('panelRendered'),
+        panelChunks: document.getElementById('panelChunks'),
+        panelRaw: document.getElementById('panelRaw'),
+        emptyState: document.getElementById('emptyState'),
+        streamWarningBox: document.getElementById('streamWarningBox'),
+        streamWarningTitle: document.getElementById('streamWarningTitle'),
+        streamWarningMsg: document.getElementById('streamWarningMsg'),
+        errorBox: document.getElementById('errorBox'),
+        errorHeading: document.getElementById('errorHeading'),
+        errorCode: document.getElementById('errorCode'),
+        errorMessage: document.getElementById('errorMessage'),
+        errorDetails: document.getElementById('errorDetails'),
+        resultContent: document.getElementById('resultContent'),
+        topicHeader: document.getElementById('topicHeader'),
+        topicHeaderValue: document.getElementById('topicHeaderValue'),
+        markdownOutput: document.getElementById('markdownOutput'),
+        chunksEmpty: document.getElementById('chunksEmpty'),
+        chunksTable: document.getElementById('chunksTable'),
+        chunksTbody: document.getElementById('chunksTbody'),
+        rawRequestPre: document.getElementById('rawRequestPre'),
+        rawResponsePre: document.getElementById('rawResponsePre')
+      };
+
+      // ---------- 辅助函数 ----------
+      function getEndpoint() {
+        return state.mode === 'stream' ? '/api/explanations/stream' : '/api/explanations';
+      }
+
+      function buildPayloadFromForm() {
+        const payload = { topic: el.topicInput.value };
+        // focus 为可选字段：用户未填写时不放入请求体，与 README 示例和测试保持一致。
+        if (el.focusInput.value.trim() !== '') {
+          payload.focus = el.focusInput.value;
+        }
+        return JSON.stringify(payload, null, 2);
+      }
+
+      function getRequestBody() {
+        return el.rawModeToggle.checked ? el.rawBodyInput.value : buildPayloadFromForm();
+      }
+
+      function updatePayloadPreview() {
+        el.payloadPreview.textContent = buildPayloadFromForm();
+      }
+
+      function setMode(mode) {
+        state.mode = mode;
+        const isStream = mode === 'stream';
+        el.modeStreamBtn.setAttribute('aria-pressed', String(isStream));
+        el.modeSyncBtn.setAttribute('aria-pressed', String(!isStream));
+        el.activeEndpoint.textContent = getEndpoint();
+        el.submitBtn.textContent = isStream ? '开始流式讲解' : '发送同步请求';
+        el.modeNote.innerHTML = isStream
+          ? '调用 <code>/api/explanations/stream</code>，携带 <code>Accept: text/event-stream</code> 逐片接收推送。'
+          : '调用 <code>/api/explanations</code>，等待模型完整生成后返回 JSON。';
+        el.metricTtftWrap.classList.toggle('hidden', !isStream);
+        el.metricChunksWrap.classList.toggle('hidden', !isStream);
+      }
+
+      function setRawMode(enabled, customBody) {
+        el.rawModeToggle.checked = enabled;
+        el.formFields.classList.toggle('hidden', enabled);
+        el.previewWrapper.classList.toggle('hidden', enabled);
+        el.rawBodyWrapper.classList.toggle('hidden', !enabled);
+        if (enabled) {
+          el.rawBodyInput.value = customBody !== undefined ? customBody : buildPayloadFromForm();
+        } else {
+          updatePayloadPreview();
+        }
+      }
+
+      function setActiveTab(tabName) {
+        const tabs = [
+          { name: 'rendered', btn: el.tabRendered, panel: el.panelRendered },
+          { name: 'chunks', btn: el.tabChunks, panel: el.panelChunks },
+          { name: 'raw', btn: el.tabRaw, panel: el.panelRaw }
+        ];
+        tabs.forEach((item) => {
+          const active = item.name === tabName;
+          item.btn.setAttribute('aria-selected', String(active));
+          item.panel.classList.toggle('hidden', !active);
+        });
+      }
+
+      function setStatus(pillState, text, httpMetaText) {
+        el.statusPill.dataset.state = pillState;
+        el.statusPill.textContent = text;
+        if (httpMetaText !== undefined) {
+          el.httpMeta.textContent = httpMetaText;
+        }
+      }
+
+      function setLoading(loading) {
+        state.isLoading = loading;
+        el.submitBtn.disabled = loading;
+        el.stopBtn.classList.toggle('hidden', !(loading && state.mode === 'stream'));
+        el.clearBtn.disabled = loading;
+      }
+
+      function resetResultView() {
+        state.explanationText = '';
+        state.chunks = [];
+        state.rawResponseText = '';
+
+        el.emptyState.classList.remove('hidden');
+        el.streamWarningBox.classList.add('hidden');
+        el.errorBox.classList.add('hidden');
+        el.resultContent.classList.add('hidden');
+        el.topicHeader.classList.add('hidden');
+        el.markdownOutput.innerHTML = '';
+
+        el.chunksEmpty.classList.remove('hidden');
+        el.chunksTable.classList.add('hidden');
+        el.chunksTbody.innerHTML = '';
+        el.chunkBadge.textContent = '0';
+
+        el.rawRequestPre.textContent = '尚未发送请求。';
+        el.rawResponsePre.textContent = '尚未收到响应。';
+
+        el.metricTotal.textContent = '-';
+        el.metricTtft.textContent = '-';
+        el.metricChunks.textContent = '0';
+        el.metricChars.textContent = '0';
+        el.copyBtn.disabled = true;
+        setStatus('idle', '待发送', '');
+      }
+
+      // ---------- XSS 安全的轻量 Markdown 渲染 ----------
+      function escapeHtml(text) {
+        return text
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;')
+          .replace(/'/g, '&#39;');
+      }
+
+      function formatInlineMarkdown(escapedLine) {
+        // 先提取行内代码，避免代码里的星号被误解析为加粗。
+        const codeTokens = [];
+        let result = escapedLine.replace(/`([^`]+)`/g, (_, code) => {
+          const idx = codeTokens.length;
+          codeTokens.push('<code>' + code + '</code>');
+          return '\u0000CODE' + idx + '\u0000';
+        });
+        result = result.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+        result = result.replace(/\u0000CODE(\d+)\u0000/g, (_, idx) => codeTokens[Number(idx)]);
+        return result;
+      }
+
+      function renderMarkdown(rawText, streaming) {
+        const normalized = rawText.replace(/\r\n/g, '\n');
+        const lines = normalized.split('\n');
+        const htmlParts = [];
+        let inCodeBlock = false;
+        let codeLines = [];
+        let listType = null; // 'ul' | 'ol' | null
+        let paragraphLines = [];
+
+        function flushParagraph() {
+          if (paragraphLines.length === 0) return;
+          htmlParts.push('<p>' + paragraphLines.map(formatInlineMarkdown).join('<br />') + '</p>');
+          paragraphLines = [];
+        }
+
+        function closeList() {
+          if (!listType) return;
+          htmlParts.push('</' + listType + '>');
+          listType = null;
+        }
+
+        for (let i = 0; i < lines.length; i++) {
+          const line = lines[i];
+
+          // 代码块围栏（支持流式输出时尚未闭合的代码块）
+          if (line.trim().startsWith('```')) {
+            flushParagraph();
+            closeList();
+            if (!inCodeBlock) {
+              inCodeBlock = true;
+              codeLines = [];
+            } else {
+              htmlParts.push('<pre><code>' + escapeHtml(codeLines.join('\n')) + '</code></pre>');
+              inCodeBlock = false;
+              codeLines = [];
+            }
+            continue;
+          }
+
+          if (inCodeBlock) {
+            codeLines.push(line);
+            continue;
+          }
+
+          if (line.trim() === '') {
+            flushParagraph();
+            closeList();
+            continue;
+          }
+
+          const headingMatch = line.match(/^(#{1,4})\s+(.+)$/);
+          if (headingMatch) {
+            flushParagraph();
+            closeList();
+            const level = headingMatch[1].length;
+            htmlParts.push('<h' + level + '>' + formatInlineMarkdown(escapeHtml(headingMatch[2])) + '</h' + level + '>');
+            continue;
+          }
+
+          const ulMatch = line.match(/^\s*[-*]\s+(.+)$/);
+          if (ulMatch) {
+            flushParagraph();
+            if (listType !== 'ul') {
+              closeList();
+              htmlParts.push('<ul>');
+              listType = 'ul';
+            }
+            htmlParts.push('<li>' + formatInlineMarkdown(escapeHtml(ulMatch[1])) + '</li>');
+            continue;
+          }
+
+          const olMatch = line.match(/^\s*\d+\.\s+(.+)$/);
+          if (olMatch) {
+            flushParagraph();
+            if (listType !== 'ol') {
+              closeList();
+              htmlParts.push('<ol>');
+              listType = 'ol';
+            }
+            htmlParts.push('<li>' + formatInlineMarkdown(escapeHtml(olMatch[1])) + '</li>');
+            continue;
+          }
+
+          closeList();
+          paragraphLines.push(escapeHtml(line));
+        }
+
+        flushParagraph();
+        closeList();
+        if (inCodeBlock) {
+          htmlParts.push('<pre><code>' + escapeHtml(codeLines.join('\n')) + '</code></pre>');
+        }
+
+        let html = htmlParts.join('');
+        if (streaming) {
+          html += '<span class="stream-cursor" aria-hidden="true"></span>';
+        }
+        return html;
+      }
+
+      // ---------- 展示结构化错误 ----------
+      function showErrorPanel(statusText, errorObj, fallbackText) {
+        el.emptyState.classList.add('hidden');
+        el.errorBox.classList.remove('hidden');
+
+        el.errorHeading.textContent = statusText;
+        if (errorObj && typeof errorObj === 'object' && errorObj.error) {
+          el.errorCode.textContent = errorObj.error;
+          el.errorCode.classList.remove('hidden');
+          el.errorMessage.textContent = errorObj.message || '服务端未提供错误说明。';
+          el.errorDetails.innerHTML = '';
+          if (Array.isArray(errorObj.details) && errorObj.details.length > 0) {
+            errorObj.details.forEach((detail) => {
+              const li = document.createElement('li');
+              li.textContent = detail;
+              el.errorDetails.appendChild(li);
+            });
+            el.errorDetails.classList.remove('hidden');
+          } else {
+            el.errorDetails.classList.add('hidden');
+          }
+        } else {
+          el.errorCode.classList.add('hidden');
+          el.errorDetails.classList.add('hidden');
+          el.errorMessage.textContent = fallbackText || '请求未能成功完成，请查看「请求与响应报文」确认详情。';
+        }
+      }
+
+      function renderChunkRow(chunk) {
+        el.chunksEmpty.classList.add('hidden');
+        el.chunksTable.classList.remove('hidden');
+
+        const tr = document.createElement('tr');
+        const tdIdx = document.createElement('td');
+        tdIdx.className = 'chunk-mono';
+        tdIdx.textContent = '#' + chunk.index;
+
+        const tdTime = document.createElement('td');
+        tdTime.className = 'chunk-mono';
+        tdTime.textContent = '+' + chunk.elapsedMs + ' ms';
+
+        const tdLen = document.createElement('td');
+        tdLen.className = 'chunk-mono';
+        tdLen.textContent = String(chunk.data.length);
+
+        const tdData = document.createElement('td');
+        tdData.className = 'chunk-mono';
+        // 将换行符替换为可视标记，方便确认流式输出里换行是如何分片到达的。
+        const escaped = escapeHtml(chunk.data).replace(/\n/g, '<span class="ws-marker">↵</span>\n');
+        tdData.innerHTML = escaped || '<span class="ws-marker">(空字符串)</span>';
+
+        tr.append(tdIdx, tdTime, tdLen, tdData);
+        el.chunksTbody.appendChild(tr);
+      }
+
+      function recordRawRequest(endpoint, headers, body) {
+        const headerLines = Object.entries(headers)
+          .map(([k, v]) => k + ': ' + v)
+          .join('\n');
+        el.rawRequestPre.textContent = 'POST ' + endpoint + '\n' + headerLines + '\n\n' + body;
+      }
+
+      function recordRawResponse(response, rawBodyText) {
+        const ct = response.headers.get('content-type') || '(无 Content-Type)';
+        const headerSummary = 'HTTP ' + response.status + ' ' + (response.statusText || '') + '\nContent-Type: ' + ct;
+        el.rawResponsePre.textContent = headerSummary + '\n\n' + (rawBodyText || '(空响应体)');
+      }
+
+      // ---------- 解析单个 SSE 事件块 ----------
+      // 按 SSE 规范：同一事件内可出现多行 data:，需剥离每行冒号后的第一个可选空格并用 \n 连接。
+      function extractSseData(eventBlock) {
+        const lines = eventBlock.split('\n');
+        const dataLines = [];
+        for (const line of lines) {
+          if (line.startsWith('data:')) {
+            let value = line.slice(5);
+            if (value.startsWith(' ')) {
+              value = value.slice(1);
+            }
+            dataLines.push(value);
+          }
+        }
+        return dataLines.length > 0 ? dataLines.join('\n') : null;
+      }
+
+      // ---------- 发送请求核心逻辑 ----------
+      async function handleSubmit(event) {
+        event.preventDefault();
+        if (state.isLoading) return;
+
+        resetResultView();
+        el.emptyState.classList.add('hidden');
+        setLoading(true);
+
+        const endpoint = getEndpoint();
+        const body = getRequestBody();
+        const isStream = state.mode === 'stream';
+        const headers = {
+          'Content-Type': 'application/json',
+          Accept: isStream ? 'text/event-stream' : 'application/json'
+        };
+
+        recordRawRequest(endpoint, headers, body);
+        setStatus('loading', isStream ? '正在连接流式接口...' : '等待模型生成...', 'POST ' + endpoint);
+
+        const controller = new AbortController();
+        state.abortController = controller;
+        const startTime = performance.now();
+
+        try {
+          const response = await fetch(endpoint, {
+            method: 'POST',
+            headers,
+            body,
+            signal: controller.signal
+          });
+
+          const contentType = response.headers.get('content-type') || '';
+          const httpMeta = response.status + (response.statusText ? ' ' + response.statusText : '') +
+            (contentType ? ' · ' + contentType.split(';')[0] : '');
+
+          // 非 2xx 响应：无论是同步还是流式入口，ApiExceptionHandler 都会返回 JSON 格式的 ApiError。
+          if (!response.ok) {
+            const rawText = await response.text();
+            const elapsed = Math.round(performance.now() - startTime);
+            el.metricTotal.textContent = elapsed + ' ms';
+            recordRawResponse(response, rawText);
+
+            let parsed = null;
+            try {
+              parsed = JSON.parse(rawText);
+            } catch (_) {
+              parsed = null;
+            }
+
+            setStatus('error', 'HTTP ' + response.status, httpMeta);
+            showErrorPanel('服务端返回 HTTP ' + response.status, parsed, rawText);
+            return;
+          }
+
+          if (!isStream) {
+            // ---------- 同步 JSON 响应处理 ----------
+            const rawText = await response.text();
+            const elapsed = Math.round(performance.now() - startTime);
+            el.metricTotal.textContent = elapsed + ' ms';
+            recordRawResponse(response, rawText);
+
+            let data;
+            try {
+              data = JSON.parse(rawText);
+            } catch (parseErr) {
+              setStatus('error', 'JSON 解析失败', httpMeta);
+              showErrorPanel('响应不是合法 JSON', null, rawText);
+              return;
+            }
+
+            state.explanationText = typeof data.explanation === 'string' ? data.explanation : '';
+            el.metricChars.textContent = String(state.explanationText.length);
+            el.copyBtn.disabled = state.explanationText.length === 0;
+
+            el.resultContent.classList.remove('hidden');
+            if (typeof data.topic === 'string') {
+              el.topicHeader.classList.remove('hidden');
+              el.topicHeaderValue.textContent = data.topic;
+            }
+            el.markdownOutput.innerHTML = renderMarkdown(state.explanationText, false);
+            setStatus('ok', '同步完成', httpMeta);
+            return;
+          }
+
+          // ---------- SSE 流式响应处理 ----------
+          if (!response.body) {
+            setStatus('error', '浏览器不支持流式读取', httpMeta);
+            showErrorPanel('无法读取响应流', null, '当前浏览器环境不支持 ReadableStream。');
+            return;
+          }
+
+          setStatus('loading', '正在接收 SSE 分片...', httpMeta);
+          el.resultContent.classList.remove('hidden');
+
+          const reader = response.body.getReader();
+          const decoder = new TextDecoder('utf-8');
+          let buffer = '';
+          let firstChunkTime = null;
+
+          function pushSseEventBlock(block) {
+            const data = extractSseData(block);
+            if (data === null) return;
+
+            const elapsedMs = Math.round(performance.now() - startTime);
+            if (firstChunkTime === null) {
+              firstChunkTime = elapsedMs;
+              el.metricTtft.textContent = firstChunkTime + ' ms';
+            }
+
+            const chunk = {
+              index: state.chunks.length + 1,
+              elapsedMs,
+              data
+            };
+            state.chunks.push(chunk);
+            state.explanationText += data;
+
+            el.metricChunks.textContent = String(state.chunks.length);
+            el.chunkBadge.textContent = String(state.chunks.length);
+            el.metricChars.textContent = String(state.explanationText.length);
+            el.copyBtn.disabled = state.explanationText.length === 0;
+
+            renderChunkRow(chunk);
+            el.markdownOutput.innerHTML = renderMarkdown(state.explanationText, true);
+          }
+
+          while (true) {
+            const { value, done } = await reader.read();
+            if (done) break;
+
+            const decoded = decoder.decode(value, { stream: true });
+            state.rawResponseText += decoded;
+            // 将 \r\n 统一转为 \n；若块末尾恰巧是孤立的 \r，留待下一块拼接后再判断。
+            buffer += decoded;
+            const trailingCr = buffer.endsWith('\r');
+            const workable = trailingCr ? buffer.slice(0, -1) : buffer;
+            const normalized = workable.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+
+            const parts = normalized.split('\n\n');
+            const remaining = parts.pop();
+            for (const block of parts) {
+              if (block.trim() !== '') {
+                pushSseEventBlock(block);
+              }
+            }
+            buffer = remaining + (trailingCr ? '\r' : '');
+            el.metricTotal.textContent = Math.round(performance.now() - startTime) + ' ms';
+          }
+
+          // 流结束时冲刷解码器与残留缓冲，避免最后一个无尾随空行的事件丢失。
+          const tail = decoder.decode();
+          if (tail) {
+            state.rawResponseText += tail;
+            buffer += tail;
+          }
+          const finalNormalized = buffer.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+          if (finalNormalized.trim() !== '') {
+            pushSseEventBlock(finalNormalized);
+          }
+
+          const totalElapsed = Math.round(performance.now() - startTime);
+          el.metricTotal.textContent = totalElapsed + ' ms';
+          recordRawResponse(response, state.rawResponseText);
+          el.markdownOutput.innerHTML = renderMarkdown(state.explanationText, false);
+          setStatus('ok', '流式完成', httpMeta);
+        } catch (err) {
+          const totalElapsed = Math.round(performance.now() - startTime);
+          el.metricTotal.textContent = totalElapsed + ' ms';
+
+          if (err && err.name === 'AbortError') {
+            el.markdownOutput.innerHTML = renderMarkdown(state.explanationText, false);
+            if (state.rawResponseText) {
+              el.rawResponsePre.textContent = '(流已被用户手动中止)\n\n' + state.rawResponseText;
+            }
+            setStatus('warn', '已手动停止', '已接收 ' + state.chunks.length + ' 个分片');
+            if (state.chunks.length > 0) {
+              el.streamWarningBox.classList.remove('hidden');
+              el.streamWarningTitle.textContent = '流式接收已手动停止';
+              el.streamWarningMsg.textContent = '已保留停止前收到的 ' + state.chunks.length + ' 个分片。';
+            }
+            return;
+          }
+
+          // 流中途发生网络或上游异常：保留已经渲染的分片，对应后端流中途出错时的行为预期。
+          if (state.chunks.length > 0) {
+            el.markdownOutput.innerHTML = renderMarkdown(state.explanationText, false);
+            el.streamWarningBox.classList.remove('hidden');
+            el.streamWarningTitle.textContent = '流中途异常中断';
+            el.streamWarningMsg.textContent =
+              '已保留中断前收到的 ' + state.chunks.length + ' 个分片（' + (err ? err.message : '连接已关闭') + '）。请检查服务端日志排查模型调用异常。';
+            el.rawResponsePre.textContent = '(流中途中断)\n\n' + state.rawResponseText;
+            setStatus('warn', '流中途中断', '已保留 ' + state.chunks.length + ' 个分片');
+          } else {
+            const msg = err && err.message ? err.message : '无法连接到服务端';
+            el.rawResponsePre.textContent = '网络请求异常：' + msg;
+            setStatus('error', '请求失败', '连接异常');
+            showErrorPanel(
+              '无法连接到接口',
+              null,
+              msg + '。请确认已启动 stage-01 服务，并通过 http://localhost:8080/ 访问本页面。'
+            );
+          }
+        } finally {
+          state.abortController = null;
+          setLoading(false);
+        }
+      }
+
+      // ---------- 事件绑定 ----------
+      el.modeStreamBtn.addEventListener('click', () => setMode('stream'));
+      el.modeSyncBtn.addEventListener('click', () => setMode('sync'));
+
+      el.topicInput.addEventListener('input', updatePayloadPreview);
+      el.focusInput.addEventListener('input', updatePayloadPreview);
+      el.rawModeToggle.addEventListener('change', () => setRawMode(el.rawModeToggle.checked));
+
+      document.querySelectorAll('.preset-btn').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          const preset = PRESETS[btn.dataset.preset];
+          if (!preset) return;
+          if (preset.raw) {
+            setRawMode(true, preset.body);
+          } else {
+            setRawMode(false);
+            el.topicInput.value = preset.topic;
+            el.focusInput.value = preset.focus;
+            updatePayloadPreview();
+          }
+        });
+      });
+
+      el.explainForm.addEventListener('submit', handleSubmit);
+
+      el.stopBtn.addEventListener('click', () => {
+        if (state.abortController) {
+          state.abortController.abort();
+        }
+      });
+
+      el.clearBtn.addEventListener('click', () => {
+        if (!state.isLoading) {
+          resetResultView();
+        }
+      });
+
+      el.tabRendered.addEventListener('click', () => setActiveTab('rendered'));
+      el.tabChunks.addEventListener('click', () => setActiveTab('chunks'));
+      el.tabRaw.addEventListener('click', () => setActiveTab('raw'));
+
+      el.copyBtn.addEventListener('click', async () => {
+        if (!state.explanationText) return;
+        try {
+          await navigator.clipboard.writeText(state.explanationText);
+          const original = el.copyBtn.textContent;
+          el.copyBtn.textContent = '已复制';
+          setTimeout(() => {
+            el.copyBtn.textContent = original;
+          }, 1400);
+        } catch (_) {
+          el.copyBtn.textContent = '复制失败';
+          setTimeout(() => {
+            el.copyBtn.textContent = '复制正文';
+          }, 1400);
+        }
+      });
+
+      document.addEventListener('keydown', (event) => {
+        if ((event.ctrlKey || event.metaKey) && event.key === 'Enter' && !state.isLoading) {
+          el.explainForm.requestSubmit();
+        }
+      });
+
+      // 初始化
+      setMode('stream');
+      updatePayloadPreview();
+    })();
+  </script>
+</body>
+</html>

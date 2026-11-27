@@ -2,13 +2,16 @@ package dev.javaagentstudy.stage01.explain;
 
 import jakarta.validation.Valid;
 
+import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import reactor.core.publisher.Flux;
+
 /**
- * 概念讲解的 HTTP 入口：POST /api/explanations。
+ * 概念讲解的 HTTP 入口：POST /api/explanations（同步）与 POST /api/explanations/stream（SSE 流式）。
  *
  * <p>Controller 只负责接收请求、返回响应，具体逻辑交给 Service。
  */
@@ -26,5 +29,12 @@ public class ConceptExplanationController {
     @PostMapping
     public ExplanationResponse explain(@Valid @RequestBody ExplanationRequest request) {
         return service.explain(request);
+    }
+
+    // SSE 流式讲解：produces 指定 text/event-stream，Flux<String> 的每个元素会作为一个 data 事件推送。
+    // 入参校验与同步接口一致：校验失败时在进入方法前抛异常，不会触发模型流式调用。
+    @PostMapping(value = "/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    public Flux<String> explainStream(@Valid @RequestBody ExplanationRequest request) {
+        return service.explainStream(request);
     }
 }
