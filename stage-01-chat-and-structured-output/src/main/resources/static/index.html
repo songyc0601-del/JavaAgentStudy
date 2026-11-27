@@ -804,6 +804,21 @@
           <p class="mode-note" id="modeNote">
             调用 <code>/api/explanations/stream</code>，携带 <code>Accept: text/event-stream</code> 逐片接收推送。
           </p>
+
+          <div class="field" style="margin-top: 12px;">
+            <label class="field-label" for="baseUrlInput">
+              <span>后端地址（可选）</span>
+              <span class="field-hint">留空使用当前页面同源</span>
+            </label>
+            <input
+              type="text"
+              id="baseUrlInput"
+              placeholder="同源留空，例如 http://localhost:8080"
+              autocomplete="off"
+              spellcheck="false"
+            />
+            <p class="mode-note hidden" id="baseUrlHint"></p>
+          </div>
         </div>
 
         <div class="section-block">
@@ -1040,6 +1055,8 @@
         modeStreamBtn: document.getElementById('modeStreamBtn'),
         modeSyncBtn: document.getElementById('modeSyncBtn'),
         modeNote: document.getElementById('modeNote'),
+        baseUrlInput: document.getElementById('baseUrlInput'),
+        baseUrlHint: document.getElementById('baseUrlHint'),
         explainForm: document.getElementById('explainForm'),
         formFields: document.getElementById('formFields'),
         topicInput: document.getElementById('topicInput'),
@@ -1089,8 +1106,34 @@
       };
 
       // ---------- 辅助函数 ----------
-      function getEndpoint() {
+      // 当通过 IntelliJ 内置静态预览（默认 63342 且带 _ijt 参数）或 file:// 打开页面时，
+      // 相对路径会命中静态服务器返回 404，自动回退到 Spring Boot 默认地址。
+      function detectDefaultBaseUrl() {
+        const loc = window.location;
+        if (!loc) return '';
+        const isFileProtocol = loc.protocol === 'file:';
+        const isIdeaPreview = loc.port === '63342' || (loc.search && loc.search.includes('_ijt='));
+        if (isFileProtocol || isIdeaPreview) {
+          return 'http://localhost:8080';
+        }
+        return '';
+      }
+
+      function getNormalizedBaseUrl() {
+        const raw = (el.baseUrlInput && el.baseUrlInput.value ? el.baseUrlInput.value : '').trim();
+        return raw.replace(/\/+$/, '');
+      }
+
+      function getApiPath() {
         return state.mode === 'stream' ? '/api/explanations/stream' : '/api/explanations';
+      }
+
+      function getEndpoint() {
+        return getNormalizedBaseUrl() + getApiPath();
+      }
+
+      function updateActiveEndpoint() {
+        el.activeEndpoint.textContent = getEndpoint();
       }
 
       function buildPayloadFromForm() {
@@ -1612,6 +1655,7 @@
       // ---------- 事件绑定 ----------
       el.modeStreamBtn.addEventListener('click', () => setMode('stream'));
       el.modeSyncBtn.addEventListener('click', () => setMode('sync'));
+      el.baseUrlInput.addEventListener('input', updateActiveEndpoint);
 
       el.topicInput.addEventListener('input', updatePayloadPreview);
       el.focusInput.addEventListener('input', updatePayloadPreview);
@@ -1673,7 +1717,14 @@
         }
       });
 
-      // 初始化
+      // 初始化：若检测到 IDE 预览/本地文件打开，自动填充 Spring Boot 默认地址并提示
+      const defaultBaseUrl = detectDefaultBaseUrl();
+      if (defaultBaseUrl) {
+        el.baseUrlInput.value = defaultBaseUrl;
+        el.baseUrlHint.textContent =
+          '检测到通过本地静态预览打开，已自动将请求指向 ' + defaultBaseUrl + '（也可直接访问 ' + defaultBaseUrl + '/）。';
+        el.baseUrlHint.classList.remove('hidden');
+      }
       setMode('stream');
       updatePayloadPreview();
     })();

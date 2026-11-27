@@ -3,6 +3,7 @@ package dev.javaagentstudy.stage01.explain;
 import jakarta.validation.Valid;
 
 import org.springframework.http.MediaType;
+import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -15,6 +16,8 @@ import reactor.core.publisher.Flux;
  *
  * <p>Controller 只负责接收请求、返回响应，具体逻辑交给 Service。
  */
+// 仅放行本机回环端口跨源，方便直接用 IntelliJ 内置静态预览（如 localhost:63342）打开调试页联调。
+@CrossOrigin(originPatterns = {"http://localhost:*", "http://127.0.0.1:*"})
 @RestController
 @RequestMapping("/api/explanations")
 public class ConceptExplanationController {
