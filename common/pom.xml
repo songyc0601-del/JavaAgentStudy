@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>dev.javaagentstudy</groupId>
+        <artifactId>java-agent-study</artifactId>
+        <version>0.0.1-SNAPSHOT</version>
+    </parent>
+
+    <!-- common：存放各阶段共享的领域类型和离线测试替身（Fake ChatModel）。 -->
+    <artifactId>common</artifactId>
+    <name>common</name>
+
+    <dependencies>
+        <!-- ChatModel 接口所在的 Spring AI 核心模型包，Fake ChatModel 需要实现它。 -->
+        <dependency>
+            <groupId>org.springframework.ai</groupId>
+            <artifactId>spring-ai-model</artifactId>
+        </dependency>
+
+        <!-- 测试依赖（JUnit 5 + AssertJ），用来测试 common 自己的代码。 -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+</project>

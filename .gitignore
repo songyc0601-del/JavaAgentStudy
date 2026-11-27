@@ -37,5 +37,7 @@ out/
 # Local secrets & AI tool local settings
 .env
 .env.*
+# 例外：.env.example 只含占位符，是需要提交的配置模板
+!.env.example
 CLAUDE.local.md
 .claude/settings.local.json

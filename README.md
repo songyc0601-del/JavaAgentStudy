@@ -26,7 +26,27 @@
 | `stage-06-observability-and-eval` | Micrometer / OpenTelemetry 观测与 `RelevancyEvaluator` / `FactCheckingEvaluator` 评估 | 待开启 |
 | `study-agent-app` | 整合全部能力的完整 Study Agent 应用 | 待开启 |
 
-> 本地启动与调试命令（Quick Start）将在 Milestone 1 首张代码票落地后补充。
+## Quick Start
+
+```bash
+# 1. 离线运行全部测试（无需网络、API Key，零 Token 费用；默认排除 @Tag("live-llm")）
+mvn test
+
+# 2. 准备云端模型配置：复制模板并填入真实值（.env 已被 Git 忽略，切勿提交）
+cp .env.example .env
+set -a && source .env && set +a
+
+# 3. 启动 stage-01（默认使用 OpenAI-compatible 云端端点）
+mvn -pl stage-01-chat-and-structured-output -am spring-boot:run
+
+# 4. 或切换到本地 ollama 模型
+mvn -pl stage-01-chat-and-structured-output -am spring-boot:run -Dspring-boot.run.profiles=ollama
+
+# 5. 调用同步概念讲解接口
+curl -X POST http://localhost:8080/api/explanations \
+  -H 'Content-Type: application/json' \
+  -d '{"topic":"集合框架","focus":"ArrayList 与 LinkedList 的区别"}'
+```
 
 ## 核心文档索引
 
