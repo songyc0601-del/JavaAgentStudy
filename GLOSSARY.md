@@ -24,6 +24,10 @@ _Avoid_: User, Student, Account
 Java 学习体系中的一个独立知识主题，例如集合框架、JVM 内存模型或并发基础。
 _Avoid_: Subject, Tag, Category
 
+**Explanation**:
+Study Agent 针对某个 Topic（可附带 Learner 的关注重点）生成的概念讲解，面向初级 Java 开发者，涵盖核心原理、典型场景与常见误区。
+_Avoid_: Answer, Summary, Tutorial
+
 **Knowledge Source**:
 供 Study Agent 检索与引用、用于支撑概念讲解与出题的原始学习资料。
 _Avoid_: Document, Corpus, File
