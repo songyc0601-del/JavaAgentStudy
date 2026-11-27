@@ -1,0 +1,20 @@
+name: CI
+
+# 每次 push 和 Pull Request 都跑一遍离线测试。
+# 默认构建会排除 @Tag("live-llm")，所以这里不需要 API Key，也不产生 Token 费用。
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+      - name: Run offline tests
+        run: mvn -B -ntp test

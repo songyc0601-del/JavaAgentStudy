@@ -31,7 +31,7 @@ public class ConceptExplanationService {
      * @param request 包含 topic 和可选 focus 的请求
      * @return 包含 topic 与讲解文本的响应
      */
-    public ExplanationResponse explain(ExplanationRequest request) {
+    public ExplanationResponse  explain(ExplanationRequest request) {
         // 用户提示词：必须包含 topic；如果有 focus，再追加关注重点。
         String userPrompt = "请讲解 Java 主题：" + request.topic();
         if (request.focus() != null && !request.focus().isBlank()) {

@@ -1,29 +1,15 @@
 # 默认配置：接入 OpenAI-compatible 云端端点。
-# 真实值通过环境变量提供（见项目根目录的 .env.example），密钥不会写进代码仓库。
+# 会自动尝试加载项目根目录或当前目录的 .env（见 .env.example），也可直接通过环境变量提供，密钥不会写进代码仓库。
 spring:
+  config:
+    import:
+      - optional:file:../.env[.properties]
+      - optional:file:.env[.properties]
   ai:
     openai:
       api-key: ${OPENAI_API_KEY:}
       base-url: ${OPENAI_BASE_URL:https://api.openai.com}
       chat:
-        options:
-          model: ${OPENAI_MODEL:gpt-4o-mini}
+        model: ${OPENAI_MODEL:gpt-4o-mini}
       embedding:
-        options:
-          model: ${OPENAI_EMBEDDING_MODEL:text-embedding-3-small}
-
----
-# ollama Profile：用 --spring.profiles.active=ollama 启动，切换到本地模型。
-spring:
-  config:
-    activate:
-      on-profile: ollama
-  ai:
-    # 指定使用 ollama 作为聊天模型，避免和 OpenAI 同时存在时出现多个 ChatModel 冲突。
-    model:
-      chat: ollama
-    ollama:
-      base-url: http://localhost:11434
-      chat:
-        options:
-          model: llama3.2
+        model: ${OPENAI_EMBEDDING_MODEL:text-embedding-3-small}

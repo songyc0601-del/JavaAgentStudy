@@ -8,7 +8,7 @@
 
 - **语言与构建**：JDK 21 + Maven 3.10（根坐标 / 包名：`dev.javaagentstudy`）
 - **框架版本**：Spring Boot 4.2.x + Spring AI 2.1.0 GA（见 [ADR-0001](./docs/adr/0001-spring-ai-2-1-on-spring-boot-4.md)）
-- **模型运行时**：默认接入 OpenAI-compatible 云端 API（通过环境变量配置，不入库密钥），同时保留本地 `ollama` Profile
+- **模型运行时**：默认接入 OpenAI-compatible 云端 API（通过环境变量配置，不入库密钥）（`stage-01` 暂不包含本地 `ollama` Profile，后续按需再引入）
 - **测试策略**：默认 `mvn test` 全离线、零费用通过；真实大模型与评估测试通过 `@Tag("live-llm")` 隔离按需触发
 
 ## 渐进式模块路线
@@ -39,10 +39,7 @@ set -a && source .env && set +a
 # 3. 启动 stage-01（默认使用 OpenAI-compatible 云端端点）
 mvn -pl stage-01-chat-and-structured-output -am spring-boot:run
 
-# 4. 或切换到本地 ollama 模型
-mvn -pl stage-01-chat-and-structured-output -am spring-boot:run -Dspring-boot.run.profiles=ollama
-
-# 5. 调用同步概念讲解接口
+# 4. 调用同步概念讲解接口
 curl -X POST http://localhost:8080/api/explanations \
   -H 'Content-Type: application/json' \
   -d '{"topic":"集合框架","focus":"ArrayList 与 LinkedList 的区别"}'
