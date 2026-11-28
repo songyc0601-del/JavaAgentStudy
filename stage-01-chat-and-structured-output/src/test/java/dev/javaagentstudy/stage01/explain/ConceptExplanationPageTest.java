@@ -9,14 +9,14 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import dev.javaagentstudy.common.testing.FakeChatModel;
+import dev.javaagentstudy.common.testing.SwitchableChatModel;
 import dev.javaagentstudy.stage01.Stage01Application;
+import dev.javaagentstudy.stage01.Stage01TestConfig;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Primary;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
@@ -24,22 +24,20 @@ import org.springframework.test.web.servlet.MockMvc;
 /**
  * 验证静态调试页面可随应用正常提供访问，且支持从本地 IDE 预览端口（如 IntelliJ 63342）联调接口。
  */
-@SpringBootTest(classes = {Stage01Application.class, ConceptExplanationPageTest.FakeModelConfig.class})
+@SpringBootTest(classes = {Stage01Application.class, Stage01TestConfig.class})
 @AutoConfigureMockMvc
 class ConceptExplanationPageTest {
 
-    @TestConfiguration
-    static class FakeModelConfig {
-
-        @Bean
-        @Primary
-        FakeChatModel fakeChatModel() {
-            return FakeChatModel.replyingWith("占位回复");
-        }
-    }
-
     @Autowired
     private MockMvc mockMvc;
+
+    @Autowired
+    private SwitchableChatModel chatModel;
+
+    @BeforeEach
+    void setUp() {
+        chatModel.use(FakeChatModel.replyingWith("占位回复"));
+    }
 
     @Test
     void servesVerificationHtmlPageAtIndex() throws Exception {

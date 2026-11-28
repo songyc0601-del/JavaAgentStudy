@@ -6,15 +6,14 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import dev.javaagentstudy.common.testing.FakeChatModel;
+import dev.javaagentstudy.common.testing.SwitchableChatModel;
 import dev.javaagentstudy.stage01.Stage01Application;
+import dev.javaagentstudy.stage01.Stage01TestConfig;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Primary;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -24,31 +23,19 @@ import org.springframework.test.web.servlet.MockMvc;
  * <p>非法入参必须在进入 Controller 方法前被拦截，返回 400，
  * 并且不能触发模型的流式调用（避免浪费 Token）。
  */
-@SpringBootTest(classes = {Stage01Application.class, ConceptExplanationStreamValidationTest.StreamingModelConfig.class})
+@SpringBootTest(classes = {Stage01Application.class, Stage01TestConfig.class})
 @AutoConfigureMockMvc
 class ConceptExplanationStreamValidationTest {
-
-    /** 测试专用配置：用会回放分片的假模型顶替真实大模型；若 400 场景里它被调用，记录数就不为 0。 */
-    @TestConfiguration
-    static class StreamingModelConfig {
-
-        @Bean
-        @Primary
-        FakeChatModel fakeChatModel() {
-            return FakeChatModel.streamingChunks("集合", "框架");
-        }
-    }
 
     @Autowired
     private MockMvc mockMvc;
 
     @Autowired
-    private FakeChatModel fakeChatModel;
+    private SwitchableChatModel fakeChatModel;
 
-    // Spring 会在同一个测试类的多个测试之间复用同一个假模型，每个测试前先清空记录。
     @BeforeEach
     void resetRecordedPrompts() {
-        fakeChatModel.clearRecordedPrompts();
+        fakeChatModel.use(FakeChatModel.streamingChunks("集合", "框架"));
     }
 
     @Test

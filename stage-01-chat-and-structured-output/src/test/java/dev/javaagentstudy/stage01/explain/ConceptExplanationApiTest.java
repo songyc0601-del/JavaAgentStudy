@@ -6,16 +6,15 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import dev.javaagentstudy.common.testing.FakeChatModel;
+import dev.javaagentstudy.common.testing.SwitchableChatModel;
 import dev.javaagentstudy.stage01.Stage01Application;
+import dev.javaagentstudy.stage01.Stage01TestConfig;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.context.TestConfiguration;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Import;
-import org.springframework.context.annotation.Primary;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -26,26 +25,20 @@ import org.springframework.test.web.servlet.MockMvc;
  * 只把最外层的 {@link ChatModel} 换成假模型。中间的 Controller、Service、ChatClient
  * 都是真实代码，这样测试既不花钱，又能覆盖真实的调用链路。
  */
-@SpringBootTest(classes = {Stage01Application.class, ConceptExplanationApiTest.FakeModelConfig.class})
+@SpringBootTest(classes = {Stage01Application.class, Stage01TestConfig.class})
 @AutoConfigureMockMvc
 class ConceptExplanationApiTest {
-
-    /** 测试专用配置：用假模型顶替真实的大模型。 */
-    @TestConfiguration
-    static class FakeModelConfig {
-
-        @Bean
-        @Primary
-        FakeChatModel fakeChatModel() {
-            return FakeChatModel.replyingWith("集合框架是 Java 用来存放一组对象的工具。");
-        }
-    }
 
     @Autowired
     private MockMvc mockMvc;
 
     @Autowired
-    private FakeChatModel fakeChatModel;
+    private SwitchableChatModel fakeChatModel;
+
+    @BeforeEach
+    void setUp() {
+        fakeChatModel.use(FakeChatModel.replyingWith("集合框架是 Java 用来存放一组对象的工具。"));
+    }
 
     @Test
     void returnsExplanationForValidTopic() throws Exception {

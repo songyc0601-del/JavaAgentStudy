@@ -8,15 +8,14 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import java.nio.charset.StandardCharsets;
 
 import dev.javaagentstudy.common.testing.FakeChatModel;
+import dev.javaagentstudy.common.testing.SwitchableChatModel;
 import dev.javaagentstudy.stage01.Stage01Application;
+import dev.javaagentstudy.stage01.Stage01TestConfig;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Primary;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
@@ -27,31 +26,20 @@ import org.springframework.test.web.servlet.MvcResult;
  * <p>假模型先回放两段分片，再以异常终止流。
  * 这里确认：已发出的分片不丢失、流确实以异常终止，并且上游异常原文不会泄露给调用方。
  */
-@SpringBootTest(classes = {Stage01Application.class, ConceptExplanationStreamFailureTest.FailingStreamConfig.class})
+@SpringBootTest(classes = {Stage01Application.class, Stage01TestConfig.class})
 @AutoConfigureMockMvc
 class ConceptExplanationStreamFailureTest {
-
-    /** 测试专用配置：流先输出两段分片，然后抛出带内部细节的异常。 */
-    @TestConfiguration
-    static class FailingStreamConfig {
-
-        @Bean
-        @Primary
-        FakeChatModel fakeChatModel() {
-            return FakeChatModel.streamingChunksThenFailing(
-                    new IllegalStateException("upstream secret detail"), "集合", "框架");
-        }
-    }
 
     @Autowired
     private MockMvc mockMvc;
 
     @Autowired
-    private FakeChatModel fakeChatModel;
+    private SwitchableChatModel fakeChatModel;
 
     @BeforeEach
     void resetRecordedPrompts() {
-        fakeChatModel.clearRecordedPrompts();
+        fakeChatModel.use(FakeChatModel.streamingChunksThenFailing(
+                new IllegalStateException("upstream secret detail"), "集合", "框架"));
     }
 
     @Test

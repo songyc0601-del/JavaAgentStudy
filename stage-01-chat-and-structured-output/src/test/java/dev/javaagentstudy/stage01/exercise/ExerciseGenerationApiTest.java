@@ -6,16 +6,15 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import dev.javaagentstudy.common.testing.FakeChatModel;
+import dev.javaagentstudy.common.testing.SwitchableChatModel;
 import dev.javaagentstudy.stage01.Stage01Application;
+import dev.javaagentstudy.stage01.Stage01TestConfig;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Primary;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -25,7 +24,7 @@ import org.springframework.test.web.servlet.MockMvc;
  * <p>启动完整 Spring 上下文，只把最外层 {@link ChatModel} 换成假模型，
  * 其余 Controller、Service、ChatClient 与结构化输出转换均为真实代码。
  */
-@SpringBootTest(classes = {Stage01Application.class, ExerciseGenerationApiTest.FakeModelConfig.class})
+@SpringBootTest(classes = {Stage01Application.class, Stage01TestConfig.class})
 @AutoConfigureMockMvc
 class ExerciseGenerationApiTest {
 
@@ -41,26 +40,16 @@ class ExerciseGenerationApiTest {
             }
             """;
 
-    @TestConfiguration
-    static class FakeModelConfig {
-
-        @Bean
-        @Primary
-        FakeChatModel fakeChatModel() {
-            return FakeChatModel.replyingWith(VALID_EXERCISE_JSON);
-        }
-    }
-
     @Autowired
     private MockMvc mockMvc;
 
     @Autowired
-    private FakeChatModel fakeChatModel;
+    private SwitchableChatModel fakeChatModel;
 
     @BeforeEach
     void resetRecordedPrompts() {
-        // 多个测试复用同一个假模型 Bean，先清空记录避免相互影响。
-        fakeChatModel.clearRecordedPrompts();
+        // 每个测试装入干净的假模型，避免复用上下文时跨用例互相影响。
+        fakeChatModel.use(FakeChatModel.replyingWith(VALID_EXERCISE_JSON));
     }
 
     @Test

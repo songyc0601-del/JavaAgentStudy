@@ -16,5 +16,7 @@ jobs:
           distribution: temurin
           java-version: '21'
           cache: maven
-      - name: Run offline tests
+      - name: Run offline tests and static checks
         run: mvn -B -ntp test
+      - name: Verify live-llm profile excludes guard test
+        run: mvn -B -ntp -Plive-llm -pl common test

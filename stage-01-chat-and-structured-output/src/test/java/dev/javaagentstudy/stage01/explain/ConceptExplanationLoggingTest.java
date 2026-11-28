@@ -6,68 +6,29 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.request;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import java.util.concurrent.atomic.AtomicReference;
-
 import dev.javaagentstudy.common.testing.FakeChatModel;
+import dev.javaagentstudy.common.testing.SwitchableChatModel;
 import dev.javaagentstudy.stage01.Stage01Application;
+import dev.javaagentstudy.stage01.Stage01TestConfig;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.springframework.ai.chat.model.ChatModel;
-import org.springframework.ai.chat.model.ChatResponse;
-import org.springframework.ai.chat.prompt.Prompt;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.boot.test.system.CapturedOutput;
 import org.springframework.boot.test.system.OutputCaptureExtension;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Primary;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
-
-import reactor.core.publisher.Flux;
 
 /**
  * 验证同步与流式两个概念讲解接口在成功、校验失败、异常与取消场景下的简体中文分支日志，
  * 并确认提示词与模型输出正文不会泄露到日志中。
  */
-@SpringBootTest(classes = {Stage01Application.class, ConceptExplanationLoggingTest.SwitchableModelConfig.class})
+@SpringBootTest(classes = {Stage01Application.class, Stage01TestConfig.class})
 @AutoConfigureMockMvc
 @ExtendWith(OutputCaptureExtension.class)
 class ConceptExplanationLoggingTest {
-
-    /** 可按测试方法切换底层 FakeChatModel 的测试替身，避免为不同场景重复拉起 Spring 上下文。 */
-    static class SwitchableChatModel implements ChatModel {
-
-        private final AtomicReference<FakeChatModel> delegate =
-                new AtomicReference<>(FakeChatModel.replyingWith("ok"));
-
-        void use(FakeChatModel model) {
-            delegate.set(model);
-        }
-
-        @Override
-        public ChatResponse call(Prompt prompt) {
-            return delegate.get().call(prompt);
-        }
-
-        @Override
-        public Flux<ChatResponse> stream(Prompt prompt) {
-            return delegate.get().stream(prompt);
-        }
-    }
-
-    @TestConfiguration
-    static class SwitchableModelConfig {
-
-        @Bean
-        @Primary
-        SwitchableChatModel switchableChatModel() {
-            return new SwitchableChatModel();
-        }
-    }
 
     @Autowired
     private MockMvc mockMvc;

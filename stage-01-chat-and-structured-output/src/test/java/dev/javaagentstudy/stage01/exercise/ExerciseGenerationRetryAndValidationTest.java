@@ -5,35 +5,24 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import java.util.concurrent.atomic.AtomicReference;
-
 import dev.javaagentstudy.common.testing.FakeChatModel;
+import dev.javaagentstudy.common.testing.SwitchableChatModel;
 import dev.javaagentstudy.stage01.Stage01Application;
+import dev.javaagentstudy.stage01.Stage01TestConfig;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.springframework.ai.chat.model.ChatModel;
-import org.springframework.ai.chat.model.ChatResponse;
-import org.springframework.ai.chat.prompt.Prompt;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.boot.test.system.CapturedOutput;
 import org.springframework.boot.test.system.OutputCaptureExtension;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Primary;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
-
-import reactor.core.publisher.Flux;
 
 /**
  * Exercise 生成的校验重试恢复、强类型非空契约与分支日志集成测试（接缝：HTTP 入口）。
  */
-@SpringBootTest(classes = {
-        Stage01Application.class,
-        ExerciseGenerationRetryAndValidationTest.SwitchableModelConfig.class
-})
+@SpringBootTest(classes = {Stage01Application.class, Stage01TestConfig.class})
 @AutoConfigureMockMvc
 @ExtendWith(OutputCaptureExtension.class)
 class ExerciseGenerationRetryAndValidationTest {
@@ -48,40 +37,6 @@ class ExerciseGenerationRetryAndValidationTest {
               "referenceAnswerPoints": ["元素数量超过 capacity * loadFactor 时按 2 倍扩容"]
             }
             """;
-
-    static class SwitchableChatModel implements ChatModel {
-
-        private final AtomicReference<FakeChatModel> delegate =
-                new AtomicReference<>(FakeChatModel.replyingWith(VALID_EXERCISE_JSON));
-
-        void use(FakeChatModel model) {
-            delegate.set(model);
-        }
-
-        FakeChatModel current() {
-            return delegate.get();
-        }
-
-        @Override
-        public ChatResponse call(Prompt prompt) {
-            return delegate.get().call(prompt);
-        }
-
-        @Override
-        public Flux<ChatResponse> stream(Prompt prompt) {
-            return delegate.get().stream(prompt);
-        }
-    }
-
-    @TestConfiguration
-    static class SwitchableModelConfig {
-
-        @Bean
-        @Primary
-        SwitchableChatModel switchableChatModel() {
-            return new SwitchableChatModel();
-        }
-    }
 
     @Autowired
     private MockMvc mockMvc;

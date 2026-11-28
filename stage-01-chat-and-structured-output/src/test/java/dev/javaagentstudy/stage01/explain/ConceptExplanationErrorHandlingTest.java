@@ -6,15 +6,14 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import dev.javaagentstudy.common.testing.FakeChatModel;
+import dev.javaagentstudy.common.testing.SwitchableChatModel;
 import dev.javaagentstudy.stage01.Stage01Application;
+import dev.javaagentstudy.stage01.Stage01TestConfig;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Primary;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -28,32 +27,20 @@ import org.springframework.test.web.servlet.MockMvc;
  * <p>这里的假模型被配置为“调用就抛异常”：
  * 如果 400 场景里模型被调用了，测试会因记录数不为 0 而失败。
  */
-@SpringBootTest(classes = {Stage01Application.class, ConceptExplanationErrorHandlingTest.FailingModelConfig.class})
+@SpringBootTest(classes = {Stage01Application.class, Stage01TestConfig.class})
 @AutoConfigureMockMvc
 class ConceptExplanationErrorHandlingTest {
-
-    /** 测试专用配置：用一个必定失败的假模型顶替真实大模型。 */
-    @TestConfiguration
-    static class FailingModelConfig {
-
-        @Bean
-        @Primary
-        FakeChatModel fakeChatModel() {
-            return FakeChatModel.failingWith(new IllegalStateException("model is down"));
-        }
-    }
 
     @Autowired
     private MockMvc mockMvc;
 
     @Autowired
-    private FakeChatModel fakeChatModel;
+    private SwitchableChatModel fakeChatModel;
 
-    // Spring 会在同一个测试类的多个测试之间复用同一个假模型，
-    // 所以每个测试前先清空记录，保证“模型没有被调用”的断言只看当前测试。
+    // 多个测试复用同一个共享上下文，每个测试前重新装入“调用即失败”的假模型并重置记录。
     @BeforeEach
     void resetRecordedPrompts() {
-        fakeChatModel.clearRecordedPrompts();
+        fakeChatModel.use(FakeChatModel.failingWith(new IllegalStateException("model is down")));
     }
 
     @Test

@@ -5,16 +5,16 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import dev.javaagentstudy.common.testing.FakeChatModel;
+import dev.javaagentstudy.common.testing.SwitchableChatModel;
 import dev.javaagentstudy.stage01.Stage01Application;
+import dev.javaagentstudy.stage01.Stage01TestConfig;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.ai.chat.messages.Message;
 import org.springframework.ai.chat.messages.MessageType;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Primary;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -24,26 +24,20 @@ import org.springframework.test.web.servlet.MockMvc;
  * <p>通过 HTTP 发送请求，再检查假模型“收到”的系统提示词，
  * 确认提示词明确面向初级 Java Learner，并要求涵盖三部分内容。
  */
-@SpringBootTest(classes = {Stage01Application.class, ConceptExplanationPromptTest.FakeModelConfig.class})
+@SpringBootTest(classes = {Stage01Application.class, Stage01TestConfig.class})
 @AutoConfigureMockMvc
 class ConceptExplanationPromptTest {
-
-    /** 测试专用配置：用假模型顶替真实的大模型。 */
-    @TestConfiguration
-    static class FakeModelConfig {
-
-        @Bean
-        @Primary
-        FakeChatModel fakeChatModel() {
-            return FakeChatModel.replyingWith("ok");
-        }
-    }
 
     @Autowired
     private MockMvc mockMvc;
 
     @Autowired
-    private FakeChatModel fakeChatModel;
+    private SwitchableChatModel fakeChatModel;
+
+    @BeforeEach
+    void setUp() {
+        fakeChatModel.use(FakeChatModel.replyingWith("ok"));
+    }
 
     @Test
     void systemPromptTargetsJuniorLearnerAndCoversThreeParts() throws Exception {

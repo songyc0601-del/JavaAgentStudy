@@ -1,0 +1,2 @@
+# 静态验证页单文件较大（如 stage-01 index.html），标记为 linguist-generated 以便在 GitHub Diff 中默认折叠。
+**/src/main/resources/static/*.html linguist-generated=true

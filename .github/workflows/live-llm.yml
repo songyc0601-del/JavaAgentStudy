@@ -1,0 +1,22 @@
+name: Live LLM E2E (Manual)
+
+# 仅支持手动触发，避免 push / PR 自动消耗 Token；需要在仓库 Secrets 配置 OPENAI_* 凭据。
+on:
+  workflow_dispatch:
+
+jobs:
+  live-llm:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+      - name: Run @Tag("live-llm") tests
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          OPENAI_BASE_URL: ${{ secrets.OPENAI_BASE_URL }}
+          OPENAI_MODEL: ${{ secrets.OPENAI_MODEL }}
+        run: mvn -B -ntp -Plive-llm test

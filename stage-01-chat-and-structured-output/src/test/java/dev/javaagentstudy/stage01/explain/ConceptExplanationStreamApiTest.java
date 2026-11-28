@@ -12,15 +12,14 @@ import java.util.Arrays;
 import java.util.List;
 
 import dev.javaagentstudy.common.testing.FakeChatModel;
+import dev.javaagentstudy.common.testing.SwitchableChatModel;
 import dev.javaagentstudy.stage01.Stage01Application;
+import dev.javaagentstudy.stage01.Stage01TestConfig;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Primary;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
@@ -31,31 +30,19 @@ import org.springframework.test.web.servlet.MvcResult;
  * <p>启动完整 Spring 上下文，只把最外层 ChatModel 换成回放预设分片的假模型，
  * 再通过 HTTP 请求验证 SSE 响应的类型、分片顺序与拼接文本。
  */
-@SpringBootTest(classes = {Stage01Application.class, ConceptExplanationStreamApiTest.StreamingModelConfig.class})
+@SpringBootTest(classes = {Stage01Application.class, Stage01TestConfig.class})
 @AutoConfigureMockMvc
 class ConceptExplanationStreamApiTest {
-
-    /** 测试专用配置：用回放三段分片的假模型顶替真实大模型。 */
-    @TestConfiguration
-    static class StreamingModelConfig {
-
-        @Bean
-        @Primary
-        FakeChatModel fakeChatModel() {
-            return FakeChatModel.streamingChunks("集合", "框架", "入门");
-        }
-    }
 
     @Autowired
     private MockMvc mockMvc;
 
     @Autowired
-    private FakeChatModel fakeChatModel;
+    private SwitchableChatModel fakeChatModel;
 
-    // Spring 会在同一个测试类的多个测试之间复用同一个假模型，每个测试前先清空记录。
     @BeforeEach
     void resetRecordedPrompts() {
-        fakeChatModel.clearRecordedPrompts();
+        fakeChatModel.use(FakeChatModel.streamingChunks("集合", "框架", "入门"));
     }
 
     @Test

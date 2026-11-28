@@ -5,36 +5,34 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import dev.javaagentstudy.common.testing.FakeChatModel;
+import dev.javaagentstudy.common.testing.SwitchableChatModel;
 import dev.javaagentstudy.stage01.Stage01Application;
+import dev.javaagentstudy.stage01.Stage01TestConfig;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Primary;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
 /**
  * 下游模型抛出异常时的离线集成测试（接缝：HTTP 入口）。
  */
-@SpringBootTest(classes = {Stage01Application.class, ExerciseModelFailureTest.FakeModelConfig.class})
+@SpringBootTest(classes = {Stage01Application.class, Stage01TestConfig.class})
 @AutoConfigureMockMvc
 class ExerciseModelFailureTest {
 
-    @TestConfiguration
-    static class FakeModelConfig {
-
-        @Bean
-        @Primary
-        FakeChatModel fakeChatModel() {
-            return FakeChatModel.failingWith(new IllegalStateException("model down"));
-        }
-    }
-
     @Autowired
     private MockMvc mockMvc;
+
+    @Autowired
+    private SwitchableChatModel fakeChatModel;
+
+    @BeforeEach
+    void setUp() {
+        fakeChatModel.use(FakeChatModel.failingWith(new IllegalStateException("model down")));
+    }
 
     @Test
     void returnsModelCallFailedWhenModelThrows() throws Exception {

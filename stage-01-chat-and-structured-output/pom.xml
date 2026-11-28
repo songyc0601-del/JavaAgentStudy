@@ -59,5 +59,11 @@
             <artifactId>spring-boot-starter-webclient</artifactId>
             <scope>test</scope>
         </dependency>
+        <!-- 包边界与无循环依赖架构守卫测试。 -->
+        <dependency>
+            <groupId>com.tngtech.archunit</groupId>
+            <artifactId>archunit-junit5</artifactId>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
 </project>
