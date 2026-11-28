@@ -18,9 +18,34 @@ public record Exercise(String title, Topic topic, Difficulty difficulty, String 
         List<String> hints, List<String> referenceAnswerPoints) {
 
     public Exercise {
-        // Spring AI 生成的 JSON Schema 默认把所有属性标为 required，校验 Advisor 会拦下缺失字段并让模型重试，
-        // 所以这里不再静默兜底为空列表，缺失时直接失败（List.copyOf 抛 NPE，由服务层映射为 502），避免返回残缺的 Exercise。
-        hints = List.copyOf(hints);
-        referenceAnswerPoints = List.copyOf(referenceAnswerPoints);
+        // 强类型契约守门：即使模型返回的 JSON 语法合法或只缺内容（空字符串、空数组），
+        // 也在这里直接拒绝，由服务层映射为 502（EXERCISE_GENERATION_FAILED），避免返回残缺的 Exercise。
+        if (title == null || title.isBlank()) {
+            throw new IllegalArgumentException("Exercise title must not be blank");
+        }
+        if (topic == null) {
+            throw new IllegalArgumentException("Exercise topic must not be null");
+        }
+        if (difficulty == null) {
+            throw new IllegalArgumentException("Exercise difficulty must not be null");
+        }
+        if (description == null || description.isBlank()) {
+            throw new IllegalArgumentException("Exercise description must not be blank");
+        }
+        hints = copyNonEmptyItems(hints, "hints");
+        referenceAnswerPoints = copyNonEmptyItems(referenceAnswerPoints, "referenceAnswerPoints");
+    }
+
+    private static List<String> copyNonEmptyItems(List<String> items, String fieldName) {
+        if (items == null || items.isEmpty()) {
+            throw new IllegalArgumentException("Exercise " + fieldName + " must not be empty");
+        }
+        List<String> copy = List.copyOf(items);
+        for (String item : copy) {
+            if (item == null || item.isBlank()) {
+                throw new IllegalArgumentException("Exercise " + fieldName + " must not contain blank items");
+            }
+        }
+        return copy;
     }
 }

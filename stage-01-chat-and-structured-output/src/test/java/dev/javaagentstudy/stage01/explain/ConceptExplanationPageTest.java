@@ -75,4 +75,15 @@ class ConceptExplanationPageTest {
                 .andExpect(status().isBadRequest())
                 .andExpect(header().string(HttpHeaders.ACCESS_CONTROL_ALLOW_ORIGIN, "http://localhost:63342"));
     }
+
+    @Test
+    void allowsCorsPreflightForExercisesEndpointFromLocalIdePreviewOrigin() throws Exception {
+        // 验证统一 LocalCorsConfig 对 /api/exercises 同样生效，避免两个接口的跨源行为不一致。
+        mockMvc.perform(options("/api/exercises")
+                        .header(HttpHeaders.ORIGIN, "http://localhost:63342")
+                        .header(HttpHeaders.ACCESS_CONTROL_REQUEST_METHOD, "POST")
+                        .header(HttpHeaders.ACCESS_CONTROL_REQUEST_HEADERS, "content-type"))
+                .andExpect(status().isOk())
+                .andExpect(header().string(HttpHeaders.ACCESS_CONTROL_ALLOW_ORIGIN, "http://localhost:63342"));
+    }
 }

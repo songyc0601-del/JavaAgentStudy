@@ -1,4 +1,4 @@
-package dev.javaagentstudy.stage01.explain;
+package dev.javaagentstudy.stage01.web;
 
 import java.util.List;
 

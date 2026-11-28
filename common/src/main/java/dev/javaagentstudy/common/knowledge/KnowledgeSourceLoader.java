@@ -111,7 +111,7 @@ public class KnowledgeSourceLoader {
             // 同时捕获 UncheckedIOException：Files.list 返回的流在遍历过程中出现 IO 错误时，会以该异常抛出。
             // 返回空列表后，调用方 load(Path) 只会得到内置默认集合，即“安全回退”。
             LOGGER.log(System.Logger.Level.WARNING,
-                    "Failed to list external knowledge directory, falling back to built-in sources: " + externalDirectory, ex);
+                    "列出外部知识源目录失败，已回退为内置知识源：directory=" + externalDirectory, ex);
             return List.of();
         }
     }
@@ -145,7 +145,7 @@ public class KnowledgeSourceLoader {
             // 容错策略：单个笔记读取失败（权限不足、读取中途被删除等）只跳过该文件，
             // 返回 Optional.empty() 让上游 flatMap 自动丢弃，其余笔记与内置资料不受影响。
             LOGGER.log(System.Logger.Level.WARNING,
-                    "Skipping unreadable external knowledge source: " + entryPath, ex);
+                    "跳过不可读的外部知识源文件：path=" + entryPath, ex);
             return Optional.empty();
         }
 

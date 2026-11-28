@@ -1,8 +1,6 @@
-package dev.javaagentstudy.stage01.explain;
+package dev.javaagentstudy.stage01.web;
 
 import java.util.List;
-
-import dev.javaagentstudy.stage01.exercise.ExerciseFormatException;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -67,8 +65,9 @@ public class ApiExceptionHandler {
     /** 模型输出经校验重试后仍不是合法 Exercise：同样属于上游问题，返回 502，但用独立错误码区分。 */
     @ExceptionHandler(ExerciseFormatException.class)
     public ResponseEntity<ApiError> handleExerciseFormat(ExerciseFormatException ex) {
-        // 不附带异常对象：其 cause 的 message 可能含模型输出片段；详细类型已在 Service 层记录。
-        log.error("异常分支[Exercise格式不合法]：条件=捕获ExerciseFormatException，返回502");
+        // 脱敏例外：Jackson 解析异常的 message 可能携带模型输出片段，因此只记录 cause 类名，不附带异常对象。
+        String causeType = ex.getCause() != null ? ex.getCause().getClass().getSimpleName() : "none";
+        log.error("异常分支[Exercise格式不合法]：条件=捕获ExerciseFormatException，causeType={}，返回502", causeType);
         ApiError body = new ApiError("EXERCISE_GENERATION_FAILED",
                 "The model did not return a valid exercise, please try again later", List.of());
         return ResponseEntity.status(HttpStatus.BAD_GATEWAY).body(body);

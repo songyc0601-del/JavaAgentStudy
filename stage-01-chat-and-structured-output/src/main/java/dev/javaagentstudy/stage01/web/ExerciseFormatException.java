@@ -1,4 +1,4 @@
-package dev.javaagentstudy.stage01.exercise;
+package dev.javaagentstudy.stage01.web;
 
 /**
  * 模型已正常返回，但内容经校验重试后仍无法解析为合法 Exercise。

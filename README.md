@@ -18,7 +18,7 @@
 | 模块 | 核心主题 | 状态 |
 | :--- | :--- | :--- |
 | `common` | 共享领域模型、默认初级 Java `Knowledge Source` 与离线测试替身 | 已完成（Milestone 1 / Ticket 2，`Knowledge Source` 加载见下文） |
-| `stage-01-chat-and-structured-output` | `ChatClient` 同步 / SSE 流式讲解与强类型 `Exercise` 结构化输出 | 进行中（Milestone 1：同步与 SSE 流式讲解、`Exercise` 结构化生成接口、`live-llm` 真实模型端到端测试与[学习导读](./stage-01-chat-and-structured-output/README.md)已完成） |
+| `stage-01-chat-and-structured-output` | `ChatClient` 同步 / SSE 流式讲解与强类型 `Exercise` 结构化输出 | 已完成（Milestone 1：同步与 SSE 流式讲解、`Exercise` 结构化生成接口、OpenAPI / Swagger UI、`live-llm` 端到端测试与[学习导读](./stage-01-chat-and-structured-output/README.md)） |
 | `stage-02-tools-and-advisors` | `@Tool`、`ToolCallingAdvisor`、手动循环对比、自定义 `BaseAdvisor` 与 `requiresConfirmation` 人工确认 | 待开启 |
 | `stage-03-session-and-rag` | Spring AI 2.1 `Session API`、ETL Pipeline、模块化 RAG 与 `PostgreSQL + pgvector`（Docker Compose） | 待开启 |
 | `stage-04-mcp` | 自建 Java MCP Server（`@McpTool` / Streamable HTTP）与 MCP Client 集成 | 待开启 |
@@ -64,6 +64,7 @@ curl -N -X POST http://localhost:8080/api/explanations/stream \
 - **失败时的行为**：
   - `topic` 为空白或缺失、请求体不是合法 JSON：返回 HTTP 400（JSON 错误体，`error` 为 `VALIDATION_FAILED` 或 `MALFORMED_REQUEST`），不会调用模型。即使客户端带了 `Accept: text/event-stream`，错误体也固定为 `application/json`。
   - 流式调用中模型出错：`Flux` 在订阅后才产生错误，此时响应通常已开始写出，HTTP 状态码无法保证为 502；已推送的分片会保留，流随后异常终止。服务端会把错误转换为 `ModelCallException` 并记录 `ERROR` 级别日志（含已发送分片数、总字符数、耗时与异常堆栈），不向客户端返回上游异常原文。
+- **调试页与本地跨源联调**：启动后可访问 `http://localhost:8080/` 使用内置概念讲解验证页（支持切换同步 / SSE 流式、查看分片明细）。如果直接通过 IntelliJ 等本地 IDE 内置预览端口（如 `localhost:63342` 或带 `_ijt` 参数）打开页面，页面会自动将请求地址回退到 `http://localhost:8080` 并提供「后端地址」输入框手动覆写；服务端 `LocalCorsConfig` 统一对 `/api/**` 放行本机回环端口（`http://localhost:*`、`http://127.0.0.1:*`）跨源请求，不向外部主机开放。
 - **调试日志**：`stage-01` 在 `application.yml` 中默认将 `dev.javaagentstudy.stage01` 设为 `DEBUG`（可通过环境变量 `STAGE01_LOG_LEVEL` 覆盖），以简体中文记录接口入口、提示词分支、400/502 异常分支、SSE 分片序号与字符数，以及流式完成/取消/失败状态；提示词正文与模型输出正文不会写入日志。
 - **当前限制**：流中途出错时尚未向客户端推送专门的错误事件，客户端只能感知到连接异常结束。
 - **离线测试**：`common` 的 `FakeChatModel` 提供 `streamingChunks(...)`（按序回放预设分片）和 `streamingChunksThenFailing(...)`（回放分片后以预设异常终止），流式接口测试无需网络与 API Key。
@@ -101,13 +102,11 @@ curl -N -X POST http://localhost:8080/api/explanations/stream \
 
 - **学习导读**：[stage-01 学习导读](./stage-01-chat-and-structured-output/README.md) 解释 `ChatClient`、System/User Prompt、SSE 流式输出与 Structured Output 的核心概念，并提供同步讲解、SSE 流式讲解、`Exercise` 生成与非法入参 400 四类 curl 示例。
 - **`live-llm` 测试**：`LiveLlmEndToEndTest` 不注入 `FakeChatModel`，通过 HTTP 入口直连 `OPENAI_*` 环境变量（或根目录 `.env`）配置的真实端点，覆盖同步讲解、SSE 流式讲解、`Exercise` 生成与 400 入参四个用例。默认 `mvn test` 自动排除该 Tag，无需 API Key，也不产生网络请求与费用。
-- **显式运行**（会消耗 Token，约 1 分钟）：
+- **显式运行**（会消耗 Token，约 1 分钟；根 `pom.xml` 的 `live-llm` Profile 会清空排除分组、仅运行 `@Tag("live-llm")` 并自动排除 `LiveLlmExclusionGuardTest`）：
 
 ```bash
 set -a && source .env && set +a
-mvn -B -ntp -pl stage-01-chat-and-structured-output -am test \
-  -Dsurefire.excludedGroups= -Dgroups=live-llm \
-  -Dtest=LiveLlmEndToEndTest -Dsurefire.failIfNoSpecifiedTests=false
+mvn -B -ntp -Plive-llm test
 ```
 
 - **失败时的行为**：未设置 `OPENAI_API_KEY` 时，OpenAI 自动装配要求必须有 API Key，Spring 上下文会在启动阶段失败，四个用例都不会执行；API Key 无效、端点不可达或模型报错时，接口返回 HTTP 502（`MODEL_CALL_FAILED`），对应用例失败。这属于预期，说明环境未就绪。

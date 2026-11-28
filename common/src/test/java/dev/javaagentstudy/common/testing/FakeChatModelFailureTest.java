@@ -27,4 +27,15 @@ class FakeChatModelFailureTest {
         // 补充验证：即使抛出异常，这次调用也已被记录，说明记录行为不依赖调用是否成功
         assertThat(fakeModel.recordedPrompts()).hasSize(1);
     }
+
+    @Test
+    void failsStreamWithPresetExceptionWhenConfiguredToFail() {
+        IllegalStateException failure = new IllegalStateException("model is down");
+        FakeChatModel fakeModel = FakeChatModel.failingWith(failure);
+
+        // failingWith 对流式调用同样生效，不能静默返回空流。
+        assertThatThrownBy(() -> fakeModel.stream(new Prompt("any question")).blockLast())
+                .isSameAs(failure);
+        assertThat(fakeModel.recordedPrompts()).hasSize(1);
+    }
 }

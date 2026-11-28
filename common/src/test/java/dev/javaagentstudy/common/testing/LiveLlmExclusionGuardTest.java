@@ -12,8 +12,8 @@ import org.junit.jupiter.api.Test;
  * 如果 `mvn test` 通过，就说明它被排除了，排除配置有效；
  * 如果有人改坏了父 pom 里的 surefire.excludedGroups，`mvn test` 会立刻变红。
  *
- * <p>需要真实调用大模型时，用 -Dsurefire.excludedGroups= 覆盖排除配置，
- * 但不要在那种情况下运行这个守卫测试。
+ * <p>需要真实调用大模型时，请通过 {@code mvn -B -ntp -Plive-llm test} 运行；
+ * 该 Profile 会自动排除此守卫测试，避免阻断真正的 {@code live-llm} 端到端测试。
  */
 class LiveLlmExclusionGuardTest {
 

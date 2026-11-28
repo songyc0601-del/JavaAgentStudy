@@ -27,4 +27,17 @@ class FakeChatModelTest {
         // 验证：拿到的就是预设的文本，没有访问任何网络
         assertThat(reply).isEqualTo("hello");
     }
+
+    @Test
+    void returnsPresetRepliesInOrderAndRepeatsLast() {
+        FakeChatModel fakeModel = FakeChatModel.replyingInOrder("first", "second");
+
+        String r1 = fakeModel.call(new Prompt("q1")).getResult().getOutput().getText();
+        String r2 = fakeModel.call(new Prompt("q2")).getResult().getOutput().getText();
+        String r3 = fakeModel.call(new Prompt("q3")).getResult().getOutput().getText();
+
+        assertThat(r1).isEqualTo("first");
+        assertThat(r2).isEqualTo("second");
+        assertThat(r3).isEqualTo("second");
+    }
 }

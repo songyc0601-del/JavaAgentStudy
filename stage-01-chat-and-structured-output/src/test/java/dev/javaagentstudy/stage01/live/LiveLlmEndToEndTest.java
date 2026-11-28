@@ -5,8 +5,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.time.Duration;
 import java.util.List;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
 import dev.javaagentstudy.stage01.Stage01Application;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Tag;
@@ -24,9 +24,8 @@ import reactor.core.publisher.Mono;
  *
  * <p>与离线测试的区别：不注入 FakeChatModel，直连 OPENAI_* 环境变量（或根目录 .env）配置的真实端点，
  * 会产生网络请求与 Token 费用，所以带 live-llm 标签，默认 mvn test 不会运行。
- * 显式运行：mvn -pl stage-01-chat-and-structured-output -am test -Dsurefire.excludedGroups= -Dgroups=live-llm
- * -Dtest=LiveLlmEndToEndTest -Dsurefire.failIfNoSpecifiedTests=false
- * （必须带 -Dtest：否则 common 模块里故意必败的 LiveLlmExclusionGuardTest 也会被运行）
+ * 显式运行：mvn -B -ntp -Plive-llm test
+ * （live-llm Profile 会清空排除分组、只执行 @Tag("live-llm") 并自动排除 common 里的守卫测试）
  *
  * <p>断言只检查结构与非空，不比较模型原文，因为真实模型每次输出都不同。
  */
@@ -64,8 +63,8 @@ class LiveLlmEndToEndTest {
                 .block(TIMEOUT);
 
         JsonNode json = objectMapper.readTree(body);
-        assertThat(json.get("topic").asText()).isEqualTo("集合框架");
-        assertThat(json.get("explanation").asText()).isNotBlank();
+        assertThat(json.get("topic").asString()).isEqualTo("集合框架");
+        assertThat(json.get("explanation").asString()).isNotBlank();
     }
 
     @Test
@@ -98,10 +97,10 @@ class LiveLlmEndToEndTest {
 
         // 真实模型的题目文字每次不同：只断言强类型结构完整、关键字段非空。
         JsonNode json = objectMapper.readTree(body);
-        assertThat(json.get("title").asText()).isNotBlank();
-        assertThat(json.get("topic").get("name").asText()).isNotBlank();
-        assertThat(json.get("difficulty").asText()).isEqualTo("BEGINNER");
-        assertThat(json.get("description").asText()).isNotBlank();
+        assertThat(json.get("title").asString()).isNotBlank();
+        assertThat(json.get("topic").get("name").asString()).isNotBlank();
+        assertThat(json.get("difficulty").asString()).isEqualTo("BEGINNER");
+        assertThat(json.get("description").asString()).isNotBlank();
         assertThat(json.get("hints").isArray()).isTrue();
         assertThat(json.get("referenceAnswerPoints").size()).isGreaterThan(0);
     }

@@ -1,8 +1,10 @@
 package dev.javaagentstudy.common.testing;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import org.springframework.ai.chat.messages.AssistantMessage;
 import org.springframework.ai.chat.model.ChatModel;
@@ -21,10 +23,13 @@ import reactor.core.publisher.Flux;
  */
 public class FakeChatModel implements ChatModel {
 
-    /** 每次调用都会返回的预设文本。 */
-    private final String presetReply;
+    /** 同步调用按序返回的预设文本列表；为 null 表示此假模型未配置同步回复（例如流式专用替身）。 */
+    private final List<String> presetReplies;
 
-    /** 如果不为 null，每次调用都会抛出这个异常，用来模拟下游模型故障。 */
+    /** 同步按序回复时的调用计数；超出列表长度后复用最后一条，避免意外越界。 */
+    private final AtomicInteger syncCallIndex = new AtomicInteger();
+
+    /** 如果不为 null，同步与流式调用都会以此异常失败，用来模拟下游模型故障。 */
     private final RuntimeException presetFailure;
 
     /**
@@ -39,20 +44,10 @@ public class FakeChatModel implements ChatModel {
     /** 如果不为 null，流在回放完所有预设分片后以这个异常终止，用来模拟流中途出错。 */
     private final RuntimeException presetStreamFailure;
 
-    // 构造方法设为 private，外部统一通过 replyingWith(...)、failingWith(...) 或 streamingChunks(...) 创建，读起来更像一句话。
-    // 非流式假模型：不预设任何分片，也不预设流式异常，保持原有 replyingWith / failingWith 的行为不变。
-    private FakeChatModel(String presetReply, RuntimeException presetFailure) {
-        this(presetReply, presetFailure, List.of());
-    }
-
-    // 纯流式假模型：只回放分片，流正常结束（不预设流式异常）。
-    private FakeChatModel(String presetReply, RuntimeException presetFailure, List<String> presetChunks) {
-        this(presetReply, presetFailure, presetChunks, null);
-    }
-
-    private FakeChatModel(String presetReply, RuntimeException presetFailure, List<String> presetChunks,
+    // 构造方法设为 private，外部统一通过静态工厂方法创建，读起来更像一句话。
+    private FakeChatModel(List<String> presetReplies, RuntimeException presetFailure, List<String> presetChunks,
             RuntimeException presetStreamFailure) {
-        this.presetReply = presetReply;
+        this.presetReplies = presetReplies;
         this.presetFailure = presetFailure;
         this.presetChunks = presetChunks;
         this.presetStreamFailure = presetStreamFailure;
@@ -64,18 +59,35 @@ public class FakeChatModel implements ChatModel {
      * @param reply 假模型每次要返回的文本
      */
     public static FakeChatModel replyingWith(String reply) {
-        // 第二个参数传 null，表示这个假模型不会抛异常。
-        return new FakeChatModel(reply, null);
+        // 用 Collections.singletonList 允许测试显式传入 null 以覆盖“模型返回空内容”分支。
+        return new FakeChatModel(Collections.singletonList(reply), null, List.of(), null);
+    }
+
+    /**
+     * 创建一个按调用顺序依次返回预设文本的假模型，用来模拟“首次返回非法格式、重试后返回合法 JSON”等场景。
+     * 超出预设数量后继续复用最后一条回复。
+     *
+     * @param replies 按序返回的回复列表，至少提供一条
+     */
+    public static FakeChatModel replyingInOrder(String... replies) {
+        if (replies == null || replies.length == 0) {
+            throw new IllegalArgumentException("At least one reply must be provided");
+        }
+        return new FakeChatModel(Collections.unmodifiableList(new ArrayList<>(Arrays.asList(replies))),
+                null, List.of(), null);
     }
 
     /**
      * 创建一个每次调用都抛出指定异常的假模型，用来模拟“下游大模型出错”。
+     * 同时对同步 {@link #call(Prompt)} 与流式 {@link #stream(Prompt)} 生效。
      *
      * @param failure 调用时要抛出的异常（调用方拿到的就是同一个对象）
      */
     public static FakeChatModel failingWith(RuntimeException failure) {
-        // 第一个参数传 null，因为这个假模型永远不会返回文本。
-        return new FakeChatModel(null, failure);
+        if (failure == null) {
+            throw new IllegalArgumentException("Failure exception must not be null");
+        }
+        return new FakeChatModel(null, failure, List.of(), null);
     }
 
     /**
@@ -85,7 +97,7 @@ public class FakeChatModel implements ChatModel {
      */
     public static FakeChatModel streamingChunks(String... chunks) {
         // 复制成不可变列表，避免调用方事后修改数组影响回放内容。
-        return new FakeChatModel(null, null, List.of(chunks));
+        return new FakeChatModel(null, null, List.of(chunks), null);
     }
 
     /**
@@ -95,6 +107,9 @@ public class FakeChatModel implements ChatModel {
      * @param chunks  出错之前按顺序输出的文本分片
      */
     public static FakeChatModel streamingChunksThenFailing(RuntimeException failure, String... chunks) {
+        if (failure == null) {
+            throw new IllegalArgumentException("Stream failure exception must not be null");
+        }
         return new FakeChatModel(null, null, List.of(chunks), failure);
     }
 
@@ -109,12 +124,13 @@ public class FakeChatModel implements ChatModel {
     }
 
     /**
-     * 清空已记录的请求。
+     * 清空已记录的请求并重置按序回复游标。
      * Spring 测试会在多个测试方法之间复用同一个假模型 Bean，
      * 所以每个测试开始前需要清空，避免上一个测试的记录影响断言。
      */
     public void clearRecordedPrompts() {
         recordedPrompts.clear();
+        syncCallIndex.set(0);
     }
 
     /**
@@ -129,7 +145,13 @@ public class FakeChatModel implements ChatModel {
         if (presetFailure != null) {
             throw presetFailure;
         }
-        AssistantMessage message = new AssistantMessage(presetReply);
+        // 流式专用假模型未配置同步回复：显式报错，避免把 null 静默传入 AssistantMessage 掩盖测试误用。
+        if (presetReplies == null) {
+            throw new IllegalStateException(
+                    "FakeChatModel is configured for streaming only; use stream() or replyingWith()/replyingInOrder()");
+        }
+        int index = Math.min(syncCallIndex.getAndIncrement(), presetReplies.size() - 1);
+        AssistantMessage message = new AssistantMessage(presetReplies.get(index));
         return new ChatResponse(List.of(new Generation(message)));
     }
 
@@ -138,8 +160,12 @@ public class FakeChatModel implements ChatModel {
      */
     @Override
     public Flux<ChatResponse> stream(Prompt prompt) {
-        // 与 call 一致：先记录请求，再回放分片，这样测试能确认流式调用确实发生过。
+        // 与 call 一致：先记录请求，再回放分片或返回错误流，这样测试能确认流式调用确实发生过。
         recordedPrompts.add(prompt);
+        // failingWith(...) 对流式调用同样生效，避免误以为流式调用返回了正常空流。
+        if (presetFailure != null) {
+            return Flux.error(presetFailure);
+        }
         Flux<ChatResponse> responses = Flux.fromIterable(presetChunks)
                 .map(chunk -> new ChatResponse(List.of(new Generation(new AssistantMessage(chunk)))));
         // 异常放在分片之后追加，这样调用方先收到前面的分片，再在流中途感知失败。

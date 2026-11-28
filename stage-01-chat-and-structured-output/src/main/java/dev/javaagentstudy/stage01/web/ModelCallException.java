@@ -1,4 +1,4 @@
-package dev.javaagentstudy.stage01.explain;
+package dev.javaagentstudy.stage01.web;
 
 /**
  * 表示“调用下游大模型失败”的专用异常。

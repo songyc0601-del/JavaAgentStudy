@@ -1,7 +1,9 @@
 package dev.javaagentstudy.stage01.exercise;
 
 import dev.javaagentstudy.common.domain.Exercise;
-import dev.javaagentstudy.stage01.explain.ApiError;
+import dev.javaagentstudy.stage01.web.ApiError;
+import dev.javaagentstudy.stage01.web.ExerciseFormatException;
+import dev.javaagentstudy.stage01.web.RequestLogSupport;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -49,12 +51,25 @@ public class ExerciseController {
     })
     @PostMapping
     public Exercise generate(@Valid @RequestBody ExerciseRequest request) {
+        long startNanos = System.nanoTime();
         log.info("接口入口[生成Exercise] POST /api/exercises：topicLength={}, hasDifficulty={}, hasFocus={}",
-                request.topic().length(), request.difficulty() != null,
-                request.focus() != null && !request.focus().isBlank());
-        Exercise exercise = service.generate(request);
-        log.info("接口分支[生成成功返回] POST /api/exercises：条件=服务返回Exercise，hints={}, points={}",
-                exercise.hints().size(), exercise.referenceAnswerPoints().size());
-        return exercise;
+                RequestLogSupport.lengthOf(request.topic()), request.difficulty() != null,
+                RequestLogSupport.hasText(request.focus()));
+        try {
+            Exercise exercise = service.generate(request);
+            log.info("接口分支[生成成功返回] POST /api/exercises：条件=服务返回Exercise，hints={}, points={}, elapsedMs={}",
+                    exercise.hints().size(), exercise.referenceAnswerPoints().size(),
+                    RequestLogSupport.elapsedMs(startNanos));
+            return exercise;
+        } catch (ExerciseFormatException ex) {
+            // 脱敏例外：ExerciseFormatException 的 cause 可能含模型原文片段，控制器侧不附带异常对象。
+            log.warn("接口分支[生成请求失败] POST /api/exercises：条件=服务层抛出ExerciseFormatException，elapsedMs={}",
+                    RequestLogSupport.elapsedMs(startNanos));
+            throw ex;
+        } catch (RuntimeException ex) {
+            log.warn("接口分支[生成请求失败] POST /api/exercises：条件=服务层抛出{}，elapsedMs={}",
+                    ex.getClass().getSimpleName(), RequestLogSupport.elapsedMs(startNanos), ex);
+            throw ex;
+        }
     }
 }

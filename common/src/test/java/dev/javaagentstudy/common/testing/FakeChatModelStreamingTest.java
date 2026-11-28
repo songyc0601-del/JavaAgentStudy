@@ -1,6 +1,7 @@
 package dev.javaagentstudy.common.testing;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.util.List;
 
@@ -31,5 +32,14 @@ class FakeChatModelStreamingTest {
         // 验证：分片顺序与预设一致，并且这次调用已被记录
         assertThat(chunks).containsExactly("集合", "框架", "入门");
         assertThat(fakeModel.recordedPrompts()).hasSize(1);
+    }
+
+    @Test
+    void rejectsSyncCallOnStreamingOnlyFakeModel() {
+        FakeChatModel fakeModel = FakeChatModel.streamingChunks("集合");
+
+        // 防止流式假模型被误用于同步调用时静默构造 null 文本消息。
+        assertThatThrownBy(() -> fakeModel.call(new Prompt("any question")))
+                .isInstanceOf(IllegalStateException.class);
     }
 }

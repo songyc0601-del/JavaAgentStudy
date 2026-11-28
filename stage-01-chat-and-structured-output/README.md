@@ -7,7 +7,7 @@
 | 概念 | 在本阶段哪里能看到 | 一句话理解 |
 | :--- | :--- | :--- |
 | `ChatClient` | `ConceptExplanationService`、`ExerciseService` | 调用大模型的统一入口，`prompt().user(...).call()` 同步取结果，`.stream()` 流式取结果 |
-| System / User Prompt | `SYSTEM_PROMPT` 常量与 `buildUserPrompt` | System Prompt 规定模型的角色和风格，User Prompt 承载本次具体问题 |
+| System / User Prompt | `SYSTEM_PROMPT` 常量与 `PromptTemplate` 参数化模板 | System Prompt 规定模型的角色和风格，User Prompt 通过占位符渲染本次具体问题 |
 | SSE 流式输出 | `POST /api/explanations/stream` | 模型每生成一段文本就推送一段，用 `Flux<String>` 表示 |
 | Structured Output | `POST /api/exercises` | 用 `BeanOutputConverter` 把模型输出的 JSON 绑定成强类型 `Exercise`，并用 `StructuredOutputValidationAdvisor` 校验、重试 |
 
@@ -34,7 +34,7 @@ mvn -pl stage-01-chat-and-structured-output -am spring-boot:run
 
 启动后可访问：
 
-- `http://localhost:8080/`：概念讲解验证页面
+- `http://localhost:8080/`：概念讲解验证页面（若通过 IntelliJ 预览端口如 `localhost:63342` 打开，页面会自动回退指向 `http://localhost:8080` 并支持在「后端地址」框修改；服务端 `LocalCorsConfig` 仅放行本机回环端口对 `/api/**` 的跨源调用）
 - `http://localhost:8080/swagger-ui.html`：Swagger UI
 - `http://localhost:8080/v3/api-docs`：OpenAPI 3 JSON
 
@@ -102,17 +102,15 @@ curl -i -X POST http://localhost:8080/api/exercises \
 
 ### 运行 live-llm 测试
 
-默认 `mvn test` 会通过父 `pom.xml` 的 `surefire.excludedGroups=live-llm` 跳过它们，无需 API Key，也不产生网络请求。需要时先配置好环境变量，再显式覆盖排除并指定标签：
+默认 `mvn test` 会通过父 `pom.xml` 的 `surefire.excludedGroups=live-llm` 跳过它们，无需 API Key，也不产生网络请求。需要时先配置好环境变量，再激活根 `pom.xml` 的 `live-llm` Profile：
 
 ```bash
 set -a && source .env && set +a
-mvn -B -ntp -pl stage-01-chat-and-structured-output -am test \
-  -Dsurefire.excludedGroups= -Dgroups=live-llm \
-  -Dtest=LiveLlmEndToEndTest -Dsurefire.failIfNoSpecifiedTests=false
+mvn -B -ntp -Plive-llm test
 ```
 
 注意：
 
 - 会真实调用模型并消耗 Token，四个用例（同步、SSE、`Exercise`、400）共耗时约 1 分钟。
 - 断言只检查结构与非空，不比较模型原文，因为真实模型每次输出都不同。
-- 不要去掉 `-Dtest=LiveLlmEndToEndTest`：`common` 里的 `LiveLlmExclusionGuardTest` 是故意写成必败的守卫测试，用来证明默认构建确实排除了 `live-llm`，在覆盖排除后不应运行它。
+- `live-llm` Profile 会自动排除 `common` 中用于守护默认构建的必败测试 `LiveLlmExclusionGuardTest`，无需手动额外拼 `-Dtest`。

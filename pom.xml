@@ -68,11 +68,37 @@
                     <artifactId>maven-surefire-plugin</artifactId>
                     <configuration>
                         <!-- 默认 mvn test 排除真实大模型测试，保证离线、零费用。
-                             需要时用 -Dsurefire.excludedGroups= 覆盖后再运行。 -->
+                             需要运行真实模型端到端测试时，请显式激活 -Plive-llm Profile。 -->
                         <excludedGroups>${surefire.excludedGroups}</excludedGroups>
                     </configuration>
                 </plugin>
             </plugins>
         </pluginManagement>
     </build>
+
+    <profiles>
+        <!-- 显式运行带 @Tag("live-llm") 的真实大模型端到端测试：mvn -B -ntp -Plive-llm test
+             自动清空 excludedGroups、只运行 live-llm 分组，并排除故意必败的守卫测试 LiveLlmExclusionGuardTest。 -->
+        <profile>
+            <id>live-llm</id>
+            <properties>
+                <surefire.excludedGroups/>
+            </properties>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-surefire-plugin</artifactId>
+                        <configuration>
+                            <excludedGroups/>
+                            <groups>live-llm</groups>
+                            <excludes>
+                                <exclude>**/LiveLlmExclusionGuardTest.java</exclude>
+                            </excludes>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
 </project>

@@ -26,7 +26,7 @@ Every request handler and service method logs the branch it takes, so a develope
 
 - **Entry**: endpoint or method name plus non-sensitive inputs (`topic` length, whether `focus` is present, sync vs stream) at `INFO`.
 - **Each branch**: validation failure, optional-field present or absent, fallback, early return, and the success exit, one line per branch at `INFO`, naming the branch and the condition that selected it.
-- **Failure**: model error, mid-stream error, and mapped exceptions at `WARN` or `ERROR` with the cause attached.
+- **Failure**: model error, mid-stream error, and mapped exceptions at `WARN` or `ERROR` with the cause attached. **Sanitization exception**: when an exception message may contain raw model output or prompt text (such as Jackson deserialization errors during structured output parsing), log only the sanitized exception/cause class name and non-sensitive metrics without attaching the raw exception object; keeping model output out of logs takes precedence.
 - **Content**: log lengths, counts, and chunk indexes; keep prompt text, model output, API keys, and tokens out of logs.
 
 ### Issue wrap-up
